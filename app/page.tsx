@@ -3,6 +3,7 @@
 import { CSSProperties, lazy, MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const ThreeMilkTeaStage = lazy(() => import("./ThreeMilkTeaStage"));
+const ThreeInkOpening = lazy(() => import("./ThreeInkOpening"));
 
 type Beat = {
   id: string;
@@ -724,27 +725,30 @@ export default function Home() {
 
   const revealedImages = useMemo(() => new Set(Array.from(revealed).map((id) => beats.find((beat) => beat.id === id)?.image)), [revealed]);
   const milkTeaSceneActive = current?.image === 1;
+  const milkTeaStageEnabled = false;
   const milkTeaInteraction = Boolean(activeInteraction && current?.id === "milk-tea");
   const milkTeaOpacity = visual.activeImage === 1 ? 1 - visual.sceneMix : visual.incomingImage === 1 ? visual.sceneMix : 0;
   const milkTeaEffectKey = sceneEffect?.id === "milk-tea" ? sceneEffect.key : 0;
 
   return (
     <main
-      className={`experience${started ? " is-started" : ""}${current?.dark ? " is-dark" : ""}${blooming ? " is-blooming" : ""}${openingBloom ? " is-opening-bloom" : ""}${milkTeaSceneActive ? " is-webgl-milk-tea" : ""}${milkTeaInteraction ? " has-webgl-cursor-ink" : ""}${reducedMotion ? " reduce-motion" : ""}`}
+      className={`experience${started ? " is-started" : ""}${current?.dark ? " is-dark" : ""}${blooming ? " is-blooming" : ""}${openingBloom ? " is-opening-bloom" : ""}${milkTeaStageEnabled && milkTeaSceneActive ? " is-webgl-milk-tea" : ""}${milkTeaInteraction ? " has-webgl-cursor-ink" : ""}${reducedMotion ? " reduce-motion" : ""}`}
       ref={experienceRef}
       onPointerDown={handlePointerDown}
       onPointerUp={endHold}
       onPointerCancel={endHold}
       onPointerLeave={endHold}
     >
-      <InkReactor visible={ready} pointerEnabled={!milkTeaSceneActive} holdProgress={milkTeaSceneActive ? 0 : holdProgress / 100} burstKey={burstKey} dark={Boolean(current?.dark)} origin={inkOrigin} />
+      <InkReactor visible={ready} pointerEnabled={!milkTeaStageEnabled || !milkTeaSceneActive} holdProgress={milkTeaStageEnabled && milkTeaSceneActive ? 0 : holdProgress / 100} burstKey={burstKey} dark={Boolean(current?.dark)} origin={inkOrigin} />
 
       <div className={`loader${ready ? " is-ready" : ""}${started ? " is-hidden" : ""}`}>
         <div className="loader-scene" aria-hidden="true" />
         <div className="loader-wash" aria-hidden="true" />
+        <Suspense fallback={null}>
+          <ThreeInkOpening progress={progress} ready={ready} opening={openingBloom} reducedMotion={reducedMotion} />
+        </Suspense>
         {!ready ? (
           <div className="loading-mark" role="status" aria-live="polite">
-            <div className="loading-drop" aria-hidden="true"><i /></div>
             <span>墨跡正在展開</span>
             <strong>{String(progress).padStart(2, "0")}<small>%</small></strong>
           </div>
@@ -799,7 +803,7 @@ export default function Home() {
         <div className="paper-grain" />
       </div>
 
-      {started && milkTeaOpacity > 0.001 && (
+      {started && milkTeaStageEnabled && milkTeaOpacity > 0.001 && (
         <Suspense fallback={null}>
           <ThreeMilkTeaStage
             opacity={milkTeaOpacity}

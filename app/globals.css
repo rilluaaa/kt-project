@@ -104,6 +104,20 @@ button:focus-visible { outline: 2px solid #c05a4c; outline-offset: 5px; }
   mix-blend-mode: multiply;
 }
 
+.opening-ink-webgl {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  pointer-events: none;
+  mix-blend-mode: multiply;
+}
+
+.opening-ink-webgl canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
 .loading-mark,
 .opening-title {
   position: relative;
@@ -203,35 +217,24 @@ button:focus-visible { outline: 2px solid #c05a4c; outline-offset: 5px; }
   height: 8.2rem;
   place-items: center;
   margin-top: 2.4rem;
-  overflow: hidden;
-  border: 1px solid rgba(17, 21, 19, 0.45);
+  overflow: visible;
+  border: 0;
   border-radius: 50%;
   cursor: pointer;
-  background: rgba(238, 233, 220, 0.34);
+  background: transparent;
+  color: var(--paper);
   font-family: var(--serif);
   font-size: 0.78rem;
   letter-spacing: 0.18em;
-  box-shadow: inset 0 0 0 0.15rem rgba(238, 233, 220, 0.2), 0 0 0 0 rgba(10, 14, 12, 0.12);
-  transition: color 0.55s ease, transform 0.55s ease, box-shadow 0.55s ease;
+  text-shadow: 0 1px 9px rgba(0, 0, 0, 0.82);
+  transition: transform 0.55s ease, text-shadow 0.55s ease;
 }
 
 .journey-start::before {
-  position: absolute;
-  width: 8rem;
-  height: 8rem;
-  border-radius: 58% 42% 54% 46%;
-  background:
-    radial-gradient(circle at 33% 28%, rgba(71, 76, 72, 0.94), transparent 17%),
-    radial-gradient(circle at 68% 71%, #060907 0 34%, transparent 59%),
-    #0b0f0d;
-  content: "";
-  filter: blur(0.45px);
-  transform: scale(0);
-  transition: transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+  display: none;
 }
 
-.journey-start:hover { color: var(--paper); transform: scale(1.04); box-shadow: 0 0 0 0.7rem rgba(10, 14, 12, 0.06); }
-.journey-start:hover::before { transform: scale(1.12) rotate(22deg); }
+.journey-start:hover { transform: scale(1.045); text-shadow: 0 1px 12px rgba(0, 0, 0, 0.96), 0 0 1.4rem rgba(238, 233, 220, 0.3); }
 .journey-start span,
 .journey-start i { position: relative; z-index: 1; }
 .journey-start i {

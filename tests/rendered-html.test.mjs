@@ -114,9 +114,27 @@ test("ships the milk-tea 270-degree Three.js set and WebGL ink shaders", async (
   assert.match(source, /uEffectTime/);
   assert.match(page, /has-webgl-cursor-ink/);
   assert.match(page, /ThreeMilkTeaStage/);
+  assert.match(page, /milkTeaStageEnabled = false/, "the discontinuous turntable composite should remain disabled");
 
   for (const assetName of milkTeaAssets) {
     const asset = await stat(new URL(`../public/ink/milk-tea/${assetName}`, import.meta.url));
     assert.ok(asset.size > 200_000, `${assetName} should contain a production 3D scene asset`);
   }
+});
+
+test("renders loading percentage and journey entrance with a shared WebGL ink field", async () => {
+  const source = await readFile(new URL("../app/ThreeInkOpening.tsx", import.meta.url), "utf8");
+  const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+  const css = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
+
+  assert.match(source, /new THREE\.WebGLRenderer/);
+  assert.match(source, /fragmentShader/);
+  assert.match(source, /uProgress/);
+  assert.match(source, /uOpening/);
+  assert.match(source, /capillary/);
+  assert.match(source, /loading-mark strong/);
+  assert.match(source, /journey-start/);
+  assert.match(page, /ThreeInkOpening/);
+  assert.match(css, /\.opening-ink-webgl/);
+  assert.match(css, /\.journey-start::before \{\s*display: none;/);
 });
