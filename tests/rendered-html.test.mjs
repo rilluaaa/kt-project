@@ -73,4 +73,11 @@ test("references the complete six-scene continuous ink panorama", async () => {
 
   const storyBeats = html.match(/data-beat="(?:[0-9]|1[0-9]|20)"/g) ?? [];
   assert.equal(storyBeats.length, 21);
+
+  const depthScenes = html.match(/data-depth-scene="[1-6]"/g) ?? [];
+  const panoramaSlices = html.match(/class="scene-slice"/g) ?? [];
+  assert.equal(depthScenes.length, 6, "all six scenes should render as 3D stages");
+  assert.equal(panoramaSlices.length, 42, "each scene should render seven curved depth slices");
+  assert.match(html, /<canvas class="ink-trail"/);
+  assert.match(html, /古風配樂/);
 });
