@@ -176,54 +176,30 @@ function buildSoundtrack(): AudioEngine | null {
     return buffer;
   };
 
-  const guqin = (frequency: number, now: number, volume = 0.1, pan = 0) => {
+  const guzheng = (frequency: number, now: number, volume = 0.085, pan = 0, bend = true) => {
     const source = context.createBufferSource();
     const tone = context.createBiquadFilter();
+    const body = context.createBiquadFilter();
     const gain = context.createGain();
     const panner = context.createStereoPanner();
     source.buffer = getStringBuffer(frequency);
+    source.playbackRate.setValueAtTime(bend ? 0.992 : 1, now);
+    if (bend) source.playbackRate.exponentialRampToValueAtTime(1, now + 0.16);
     tone.type = "lowpass";
-    tone.frequency.setValueAtTime(2600, now);
-    tone.frequency.exponentialRampToValueAtTime(620, now + 3.4);
+    tone.frequency.setValueAtTime(4200, now);
+    tone.frequency.exponentialRampToValueAtTime(820, now + 3.8);
+    body.type = "peaking";
+    body.frequency.value = 620;
+    body.Q.value = 0.85;
+    body.gain.value = 4.5;
     gain.gain.setValueAtTime(0.0001, now);
-    gain.gain.exponentialRampToValueAtTime(volume, now + 0.014);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + 3.8);
+    gain.gain.exponentialRampToValueAtTime(volume, now + 0.008);
+    gain.gain.exponentialRampToValueAtTime(volume * 0.34, now + 0.26);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 4.35);
     panner.pan.value = pan;
-    source.connect(tone).connect(gain).connect(panner).connect(music);
+    source.connect(tone).connect(body).connect(gain).connect(panner).connect(music);
     source.start(now);
-    source.stop(now + 4.1);
-  };
-
-  const dizi = (frequency: number, now: number, duration = 4.6, volume = 0.035) => {
-    const fundamental = context.createOscillator();
-    const air = context.createOscillator();
-    const vibrato = context.createOscillator();
-    const vibratoDepth = context.createGain();
-    const gain = context.createGain();
-    const tone = context.createBiquadFilter();
-    fundamental.type = "sine";
-    air.type = "triangle";
-    fundamental.frequency.value = frequency;
-    air.frequency.value = frequency * 2.01;
-    vibrato.type = "sine";
-    vibrato.frequency.value = 5.1;
-    vibratoDepth.gain.value = 2.3;
-    vibrato.connect(vibratoDepth).connect(fundamental.frequency);
-    tone.type = "bandpass";
-    tone.frequency.value = frequency * 2.2;
-    tone.Q.value = 0.8;
-    gain.gain.setValueAtTime(0.0001, now);
-    gain.gain.linearRampToValueAtTime(volume, now + 0.7);
-    gain.gain.setValueAtTime(volume * 0.82, now + duration - 0.8);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
-    fundamental.connect(gain).connect(music);
-    air.connect(tone).connect(gain);
-    fundamental.start(now);
-    air.start(now);
-    vibrato.start(now);
-    fundamental.stop(now + duration + 0.05);
-    air.stop(now + duration + 0.05);
-    vibrato.stop(now + duration + 0.05);
+    source.stop(now + 4.5);
   };
 
   const woodblock = (now: number, bright = false) => {
@@ -253,23 +229,46 @@ function buildSoundtrack(): AudioEngine | null {
     });
   };
 
-  const scale = [196, 220, 261.63, 293.66, 329.63, 392, 440];
-  const melody = [0, -1, 2, 1, 4, -1, 3, 2, 0, 2, 5, -1, 4, 3, 1, -1, 0, 1, 3, -1, 5, 4, 2, -1, 1, 2, 4, 3, 2, -1, 1, 0];
+  const scale = [146.83, 164.81, 196, 220, 246.94, 293.66, 329.63, 392, 440, 493.88, 587.33];
+  const phrases = [
+    [5, -1, 7, 6, 5, 3, -1, 2, 3, 5, 6, -1, 5, 3, 2, -1],
+    [3, 5, 6, -1, 8, 7, 5, -1, 6, 5, 3, 2, -1, 3, 5, -1],
+    [7, -1, 8, 10, 9, 8, -1, 7, 5, 6, 7, -1, 5, 3, 2, -1],
+    [2, 3, 5, 3, -1, 6, 5, 3, 2, -1, 0, 2, 3, 5, -1, -1],
+    [6, 7, 9, -1, 8, 7, 6, 5, -1, 3, 5, 6, 3, 2, -1, -1],
+    [5, 3, 2, -1, 3, 5, 7, 6, 5, -1, 8, 7, 5, 3, 2, -1],
+    [8, 10, 9, 8, -1, 7, 9, 8, 6, 5, -1, 3, 5, 6, -1, -1],
+    [3, -1, 2, 0, 2, 3, 5, -1, 6, 5, 3, 2, 0, -1, 2, -1],
+    [7, 8, 10, -1, 8, 7, 5, 6, -1, 5, 3, 2, 3, 5, -1, -1],
+    [5, 6, 8, 7, 5, -1, 3, 5, 6, -1, 7, 5, 3, 2, 0, -1],
+    [2, 5, 3, 2, -1, 0, 2, 3, 5, 6, -1, 5, 3, 2, -1, -1],
+    [6, -1, 8, 7, 9, 8, 6, -1, 5, 7, 6, 5, 3, 2, 0, -1],
+  ];
+  const phraseRoute = [0, 4, 1, 7, 2, 5, 9, 3, 6, 10, 8, 11];
   let step = 0;
-  const beatMs = 720;
+  const beatMs = 610;
   const timer = window.setInterval(() => {
     if (context.state !== "running") return;
     const now = context.currentTime + 0.035;
-    const index = step % melody.length;
-    const note = melody[index];
-    if (note >= 0) guqin(scale[note], now, index % 8 === 0 ? 0.12 : 0.075, ((index % 5) - 2) * 0.14);
-    if (index % 4 === 2) woodblock(now, index % 8 === 6);
-    if (index === 0 || index === 16) gong(now, index === 0 ? 0.03 : 0.022);
-    if (index === 7) dizi(392, now + 0.22, 5.1, 0.032);
-    if (index === 23) dizi(329.63, now + 0.15, 5.6, 0.03);
-    if (index === 12 || index === 28) {
-      [0, 2, 3, 5].forEach((scaleIndex, offset) => guqin(scale[scaleIndex] * 2, now + offset * 0.11, 0.038, -0.35 + offset * 0.22));
+    const phraseNumber = Math.floor(step / 16) % phraseRoute.length;
+    const longCycle = Math.floor(step / (16 * phraseRoute.length)) % 5;
+    const beat = step % 16;
+    const routeShift = [0, 5, 2, 9, 7][longCycle];
+    const phrase = phrases[phraseRoute[(phraseNumber + routeShift) % phraseRoute.length]];
+    const note = phrase[beat];
+    const phraseEnergy = 0.86 + Math.sin((phraseNumber + longCycle * 2.3) * 1.71) * 0.1;
+    if (note >= 0) {
+      const accent = beat === 0 || beat === 8 ? 1.18 : beat === 4 || beat === 12 ? 0.94 : 0.78;
+      const pan = Math.sin((step * 0.71 + phraseNumber) * 0.62) * 0.42;
+      guzheng(scale[note], now, 0.072 * accent * phraseEnergy, pan, beat % 4 !== 3);
     }
+    if (beat === 0) guzheng(scale[[0, 2, 3, 2][phraseNumber % 4]] * 0.5, now, 0.052, -0.34, false);
+    if (beat === 8 && phraseNumber % 3 !== 1) guzheng(scale[[2, 3, 0][phraseNumber % 3]] * 0.5, now, 0.04, 0.3, false);
+    if (beat === 13 && phraseNumber % 2 === 0) {
+      [3, 5, 6, 7, 9].forEach((scaleIndex, offset) => guzheng(scale[scaleIndex], now + offset * 0.072, 0.027 - offset * 0.002, -0.42 + offset * 0.2, false));
+    }
+    if (beat === 15 && phraseNumber % 4 === 3) gong(now, 0.012);
+    if (beat === 6 && phraseNumber % 3 === 2) woodblock(now, false);
     step += 1;
   }, beatMs);
 
@@ -767,7 +766,7 @@ export default function Home() {
         <div>
           <button onClick={() => setReducedMotion((value) => !value)}>{reducedMotion ? "恢復動畫" : "減少動畫"}</button>
           <button className="sound" onClick={toggleSound} aria-pressed={!muted}>
-            <span>{muted ? "開啟聲音" : "古風配樂"}</span><i className={muted ? "muted" : ""} aria-hidden="true"><b /><b /><b /><b /></i>
+            <span>{muted ? "開啟聲音" : "古箏配樂"}</span><i className={muted ? "muted" : ""} aria-hidden="true"><b /><b /><b /><b /></i>
           </button>
         </div>
       </header>

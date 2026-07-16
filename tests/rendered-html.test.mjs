@@ -79,7 +79,7 @@ test("references the complete six-scene continuous ink panorama", async () => {
   assert.equal(depthScenes.length, 6, "all six scenes should render as 3D stages");
   assert.equal(panoramaSlices.length, 42, "each scene should render seven curved depth slices");
   assert.match(html, /<canvas class="ink-trail"/);
-  assert.match(html, /古風配樂/);
+  assert.match(html, /古箏配樂/);
 });
 
 test("ships the milk-tea 270-degree Three.js set and WebGL ink shaders", async () => {
@@ -137,4 +137,15 @@ test("renders loading percentage and journey entrance with a shared WebGL ink fi
   assert.match(page, /ThreeInkOpening/);
   assert.match(css, /\.opening-ink-webgl/);
   assert.match(css, /\.journey-start::before \{\s*display: none;/);
+});
+
+test("uses a long-form generative guzheng score instead of a short repeating loop", async () => {
+  const source = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+
+  assert.match(source, /const guzheng =/);
+  assert.match(source, /const phrases = \[/);
+  assert.match(source, /const phraseRoute = \[/);
+  assert.match(source, /const longCycle =/);
+  assert.match(source, /古箏配樂/);
+  assert.doesNotMatch(source, /const dizi =/);
 });
