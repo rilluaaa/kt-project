@@ -1,6 +1,8 @@
 "use client";
 
-import { CSSProperties, MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { CSSProperties, lazy, MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+
+const ThreeMilkTeaStage = lazy(() => import("./ThreeMilkTeaStage"));
 
 type Beat = {
   id: string;
@@ -285,17 +287,19 @@ type InkParticle = {
   tail: Array<[number, number]>;
 };
 
-function InkReactor({ visible, holdProgress, burstKey, dark, origin }: { visible: boolean; holdProgress: number; burstKey: number; dark: boolean; origin: { x: number; y: number } | null }) {
+function InkReactor({ visible, pointerEnabled, holdProgress, burstKey, dark, origin }: { visible: boolean; pointerEnabled: boolean; holdProgress: number; burstKey: number; dark: boolean; origin: { x: number; y: number } | null }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const progressRef = useRef(holdProgress);
   const burstRef = useRef(burstKey);
   const darkRef = useRef(dark);
   const originRef = useRef(origin);
+  const pointerEnabledRef = useRef(pointerEnabled);
 
   useEffect(() => { progressRef.current = holdProgress; }, [holdProgress]);
   useEffect(() => { burstRef.current = burstKey; }, [burstKey]);
   useEffect(() => { darkRef.current = dark; }, [dark]);
   useEffect(() => { originRef.current = origin; }, [origin]);
+  useEffect(() => { pointerEnabledRef.current = pointerEnabled; }, [pointerEnabled]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -338,7 +342,7 @@ function InkReactor({ visible, holdProgress, burstKey, dark, origin }: { visible
     };
 
     const pointer = (event: globalThis.PointerEvent) => {
-      if (!visible || (event.pointerType === "touch" && event.buttons === 0)) return;
+      if (!visible || !pointerEnabledRef.current || (event.pointerType === "touch" && event.buttons === 0)) return;
       const distance = Math.hypot(event.clientX - previous.x, event.clientY - previous.y);
       const count = Math.min(5, Math.max(1, Math.round(distance / 16)));
       for (let index = 0; index < count; index += 1) {
@@ -491,6 +495,7 @@ export default function Home() {
   const [sceneEffect, setSceneEffect] = useState<{ id: string; key: number } | null>(null);
   const storyRef = useRef<HTMLElement>(null);
   const visualRef = useRef<HTMLDivElement>(null);
+  const experienceRef = useRef<HTMLElement>(null);
   const audioRef = useRef<AudioEngine | null>(null);
   const holdFrame = useRef<number | null>(null);
   const holdStarted = useRef(0);
@@ -575,6 +580,7 @@ export default function Home() {
   useEffect(() => {
     if (!started) return;
     const visual = visualRef.current;
+    const experience = experienceRef.current;
     if (!visual) return;
     const move = (event: globalThis.PointerEvent) => {
       const x = event.clientX / Math.max(1, window.innerWidth) - 0.5;
@@ -583,6 +589,8 @@ export default function Home() {
       visual.style.setProperty("--pointer-pitch", `${y * 2.1}deg`);
       visual.style.setProperty("--pointer-x", `${x * -1.1}vw`);
       visual.style.setProperty("--pointer-y", `${y * -0.8}vh`);
+      experience?.style.setProperty("--ink-x", `${event.clientX}px`);
+      experience?.style.setProperty("--ink-y", `${event.clientY}px`);
     };
     const reset = () => {
       visual.style.setProperty("--pointer-yaw", "0deg");
@@ -629,7 +637,7 @@ export default function Home() {
     setRevealed((previous) => new Set(previous).add(current.id));
     setHoldProgress(100);
     setBlooming(true);
-    setBurstKey((value) => value + 1);
+    if (current.id !== "milk-tea") setBurstKey((value) => value + 1);
     setSceneEffect({ id: current.id, key: effectKey });
     window.setTimeout(() => setBlooming(false), 1900);
     window.setTimeout(() => setSceneEffect((active) => active?.key === effectKey ? null : active), 3100);
@@ -715,16 +723,21 @@ export default function Home() {
   }, [motion, reducedMotion]);
 
   const revealedImages = useMemo(() => new Set(Array.from(revealed).map((id) => beats.find((beat) => beat.id === id)?.image)), [revealed]);
+  const milkTeaSceneActive = current?.image === 1;
+  const milkTeaInteraction = Boolean(activeInteraction && current?.id === "milk-tea");
+  const milkTeaOpacity = visual.activeImage === 1 ? 1 - visual.sceneMix : visual.incomingImage === 1 ? visual.sceneMix : 0;
+  const milkTeaEffectKey = sceneEffect?.id === "milk-tea" ? sceneEffect.key : 0;
 
   return (
     <main
-      className={`experience${started ? " is-started" : ""}${current?.dark ? " is-dark" : ""}${blooming ? " is-blooming" : ""}${openingBloom ? " is-opening-bloom" : ""}${reducedMotion ? " reduce-motion" : ""}`}
+      className={`experience${started ? " is-started" : ""}${current?.dark ? " is-dark" : ""}${blooming ? " is-blooming" : ""}${openingBloom ? " is-opening-bloom" : ""}${milkTeaSceneActive ? " is-webgl-milk-tea" : ""}${milkTeaInteraction ? " has-webgl-cursor-ink" : ""}${reducedMotion ? " reduce-motion" : ""}`}
+      ref={experienceRef}
       onPointerDown={handlePointerDown}
       onPointerUp={endHold}
       onPointerCancel={endHold}
       onPointerLeave={endHold}
     >
-      <InkReactor visible={ready} holdProgress={holdProgress / 100} burstKey={burstKey} dark={Boolean(current?.dark)} origin={inkOrigin} />
+      <InkReactor visible={ready} pointerEnabled={!milkTeaSceneActive} holdProgress={milkTeaSceneActive ? 0 : holdProgress / 100} burstKey={burstKey} dark={Boolean(current?.dark)} origin={inkOrigin} />
 
       <div className={`loader${ready ? " is-ready" : ""}${started ? " is-hidden" : ""}`}>
         <div className="loader-scene" aria-hidden="true" />
@@ -786,11 +799,24 @@ export default function Home() {
         <div className="paper-grain" />
       </div>
 
-      <SceneEffect effect={sceneEffect} />
+      {started && milkTeaOpacity > 0.001 && (
+        <Suspense fallback={null}>
+          <ThreeMilkTeaStage
+            opacity={milkTeaOpacity}
+            cameraPhase={motion.index + motion.amount}
+            pointerActive={milkTeaInteraction}
+            holdProgress={holdProgress / 100}
+            effectKey={milkTeaEffectKey}
+            reducedMotion={reducedMotion}
+          />
+        </Suspense>
+      )}
+
+      <SceneEffect effect={sceneEffect?.id === "milk-tea" ? null : sceneEffect} />
 
       {activeInteraction && (
         <button
-          className="ink-control"
+          className={`ink-control${milkTeaInteraction ? " is-cursor-bound" : ""}`}
           style={{ "--ink-progress": `${holdProgress / 100}` } as CSSProperties}
           onPointerDown={(event) => { event.stopPropagation(); beginHold(); }}
           onPointerUp={(event) => { event.stopPropagation(); endHold(); }}

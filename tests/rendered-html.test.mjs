@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { stat } from "node:fs/promises";
+import { readFile, stat } from "node:fs/promises";
 import test from "node:test";
 
 const sceneFiles = [
@@ -80,4 +80,20 @@ test("references the complete six-scene continuous ink panorama", async () => {
   assert.equal(panoramaSlices.length, 42, "each scene should render seven curved depth slices");
   assert.match(html, /<canvas class="ink-trail"/);
   assert.match(html, /古風配樂/);
+});
+
+test("ships the milk-tea Three.js depth mesh and WebGL ink shaders", async () => {
+  const source = await readFile(new URL("../app/ThreeMilkTeaStage.tsx", import.meta.url), "utf8");
+  const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+  const depthMap = await stat(new URL("../public/ink/scene-02-depth.png", import.meta.url));
+
+  assert.match(source, /new THREE\.WebGLRenderer/);
+  assert.match(source, /new THREE\.PlaneGeometry\(2, 2/);
+  assert.match(source, /sceneVertexShader/);
+  assert.match(source, /overlayFragmentShader/);
+  assert.match(source, /uDepthMap/);
+  assert.match(source, /uEffectTime/);
+  assert.match(page, /has-webgl-cursor-ink/);
+  assert.match(page, /ThreeMilkTeaStage/);
+  assert.ok(depthMap.size > 100_000, "milk-tea depth map should contain full-scene depth data");
 });
