@@ -48,7 +48,7 @@ const fragmentShader = /* glsl */ `
   float fbm(vec2 point) {
     float value = 0.0;
     float amplitude = 0.52;
-    for (int octave = 0; octave < 7; octave++) {
+    for (int octave = 0; octave < 5; octave++) {
       value += noise(point) * amplitude;
       point = point * mat2(1.72, -1.05, 1.05, 1.72) + vec2(11.7, 4.3);
       amplitude *= 0.5;
@@ -113,6 +113,9 @@ const fragmentShader = /* glsl */ `
     vec3 wetInk = vec3(0.045, 0.055, 0.046);
     vec3 colour = mix(dryInk, wetInk, wetHalo * 0.65 + paperGrain * 0.12);
     float alpha = core * (0.72 + sediment * 0.2) + wetHalo * 0.23 + capillary * 0.22 + droplets * 0.52 + pointerWet * 0.25;
+    vec2 digitPoint = point * vec2(0.58, 1.42);
+    float digitReserve = 1.0 - smoothstep(0.035, 0.115, length(digitPoint));
+    alpha *= 1.0 - digitReserve * (1.0 - uReady) * 0.88;
     alpha = max(alpha, openingWash * mix(0.0, 0.97, uOpening));
     gl_FragColor = vec4(colour, clamp(alpha, 0.0, 0.97));
   }
@@ -132,7 +135,7 @@ export default function ThreeInkOpening({ progress, ready, opening, reducedMotio
 
     let renderer: THREE.WebGLRenderer;
     try {
-      renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, powerPreference: "high-performance" });
+      renderer = new THREE.WebGLRenderer({ alpha: true, antialias: false, powerPreference: "high-performance" });
     } catch {
       host.classList.add("is-unavailable");
       return;
@@ -171,22 +174,30 @@ export default function ThreeInkOpening({ progress, ready, opening, reducedMotio
     const pointerTarget = pointer.clone();
     let disposed = false;
     let frame = 0;
+    let visible = !document.hidden;
 
     const onPointerMove = (event: PointerEvent) => pointerTarget.set(event.clientX, window.innerHeight - event.clientY);
     const resize = () => {
       const width = Math.max(1, window.innerWidth);
       const height = Math.max(1, window.innerHeight);
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.55));
+      const lowPower = (navigator.hardwareConcurrency || 8) <= 4;
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, lowPower ? 1 : 1.25));
       renderer.setSize(width, height, false);
       renderer.getDrawingBufferSize(drawingBuffer);
       uniforms.uResolution.value.copy(drawingBuffer);
     };
     window.addEventListener("pointermove", onPointerMove, { passive: true });
     window.addEventListener("resize", resize);
+    const onVisibility = () => { visible = !document.hidden; };
+    document.addEventListener("visibilitychange", onVisibility);
     resize();
 
     const draw = (now: number) => {
       if (disposed) return;
+      if (!visible) {
+        frame = window.requestAnimationFrame(draw);
+        return;
+      }
       const props = propsRef.current;
       const target = props.ready
         ? document.querySelector<HTMLElement>(".journey-start")
@@ -218,6 +229,7 @@ export default function ThreeInkOpening({ progress, ready, opening, reducedMotio
       window.cancelAnimationFrame(frame);
       window.removeEventListener("pointermove", onPointerMove);
       window.removeEventListener("resize", resize);
+      document.removeEventListener("visibilitychange", onVisibility);
       geometry.dispose();
       material.dispose();
       renderer.dispose();

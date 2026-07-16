@@ -38,6 +38,8 @@ test("server-renders the complete 墨脈葵青 experience", async () => {
   assert.match(html, /data-beat="21"/);
   assert.match(html, /下一筆/);
   assert.match(html, /探索葵青/);
+  assert.match(html, /九幕已完 · 墨脈仍在流動/);
+  assert.doesNotMatch(html, /即將展開/);
   assert.doesNotMatch(html, /data-chapter|故事進度|第一幕|第二幕|第三幕/);
 });
 
@@ -75,41 +77,42 @@ test("references the complete six-scene continuous ink panorama", async () => {
   assert.equal(storyBeats.length, 21);
 
   const depthScenes = html.match(/data-depth-scene="[1-6]"/g) ?? [];
-  const panoramaSlices = html.match(/class="scene-slice"/g) ?? [];
   assert.equal(depthScenes.length, 6, "all six scenes should render as 3D stages");
-  assert.equal(panoramaSlices.length, 42, "each scene should render seven curved depth slices");
+  assert.doesNotMatch(html, /class="scene-slice"/, "the old image-card panorama should not run behind the true 3D world");
+  assert.equal((html.match(/class="scene-fallback"/g) ?? []).length, 6, "each source image should remain as a lightweight WebGL fallback");
   assert.match(html, /<canvas class="ink-trail"/);
   assert.match(html, /古箏配樂/);
 });
 
-test("ships the mountain WebGL camera and scroll-scrubbed milk-tea film", async () => {
-  const milkTeaSource = await readFile(new URL("../app/ThreeMilkTeaStage.tsx", import.meta.url), "utf8");
-  const mountainSource = await readFile(new URL("../app/ThreeMountainStage.tsx", import.meta.url), "utf8");
+test("ships one continuous nine-act Three.js world with WebGL ink interaction", async () => {
+  const worldSource = await readFile(new URL("../app/ThreeMountainStage.tsx", import.meta.url), "utf8");
   const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
   const css = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
-  const film = await stat(new URL("../public/media/scene-02-milk-tea.mp4", import.meta.url));
 
-  assert.match(mountainSource, /new THREE\.WebGLRenderer/);
-  assert.match(mountainSource, /scene-01-mountain-city\.webp/);
-  assert.match(mountainSource, /uPhase/);
-  assert.match(mountainSource, /mist/);
-  assert.match(mountainSource, /1\.25/);
-  assert.match(milkTeaSource, /new THREE\.WebGLRenderer/);
-  assert.match(milkTeaSource, /scene-02-milk-tea\.mp4/);
-  assert.match(milkTeaSource, /video\.currentTime = targetTime/);
-  assert.match(milkTeaSource, /cameraPhase - 3/);
-  assert.match(milkTeaSource, /video\.pause\(\)/);
-  assert.match(milkTeaSource, /uEffect/);
-  assert.match(milkTeaSource, /uEffectOrigin/);
-  assert.match(milkTeaSource, /pressureRing/);
+  assert.match(worldSource, /new THREE\.WebGLRenderer/);
+  assert.match(worldSource, /new THREE\.PerspectiveCamera/);
+  assert.match(worldSource, /scene-01-mountain-city\.webp/);
+  assert.match(worldSource, /new THREE\.BoxGeometry/);
+  assert.match(worldSource, /new THREE\.TubeGeometry/);
+  assert.match(worldSource, /Math\.PI \* 1\.5/);
+  assert.match(worldSource, /const teaZone/);
+  assert.match(worldSource, /const woodZone/);
+  assert.match(worldSource, /const yulanZone/);
+  assert.match(worldSource, /const neonZone/);
+  assert.match(worldSource, /const harbourZone/);
+  assert.match(worldSource, /const operaZone/);
+  assert.match(worldSource, /const tinhauZone/);
+  assert.match(worldSource, /const homeZone/);
+  assert.match(worldSource, /const actRanges = \[\[0, 3\]/);
+  assert.match(worldSource, /uEffectOrigin/);
+  assert.match(worldSource, /pressureRing/);
+  assert.match(worldSource, /zoneGroups\.forEach/);
   assert.match(page, /has-webgl-cursor-ink/);
   assert.match(page, /is-cursor-bound/);
   assert.match(page, /ThreeMountainStage/);
-  assert.match(page, /ThreeMilkTeaStage/);
-  assert.match(page, /milkTeaStageEnabled = true/);
-  assert.match(css, /\.milk-tea-film \{[\s\S]*inset: -6%/);
-  assert.match(css, /circle at 102% 103%/);
-  assert.ok(film.size > 1_000_000, "milk-tea film should contain the production 10-second scene");
+  assert.doesNotMatch(page, /ThreeMilkTeaStage/);
+  assert.doesNotMatch(page, /scene-02-milk-tea\.mp4/);
+  assert.match(css, /\.mountain-webgl\.is-unavailable/);
 });
 
 test("renders loading percentage and journey entrance with a shared WebGL ink field", async () => {
@@ -122,11 +125,13 @@ test("renders loading percentage and journey entrance with a shared WebGL ink fi
   assert.match(source, /uProgress/);
   assert.match(source, /uOpening/);
   assert.match(source, /capillary/);
+  assert.match(source, /digitReserve/);
   assert.match(source, /loading-mark strong/);
   assert.match(source, /journey-start/);
   assert.match(page, /ThreeInkOpening/);
   assert.match(css, /\.opening-ink-webgl/);
   assert.match(css, /\.journey-start::before \{\s*display: none;/);
+  assert.match(css, /\.loading-mark strong::before/);
 });
 
 test("uses a long-form generative guzheng score instead of a short repeating loop", async () => {

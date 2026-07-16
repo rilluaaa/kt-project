@@ -175,12 +175,31 @@ button:focus-visible { outline: 2px solid #c05a4c; outline-offset: 5px; }
 }
 
 .loading-mark strong {
+  position: relative;
+  z-index: 3;
+  isolation: isolate;
   margin-top: 0.7rem;
+  color: #111713;
   font-family: Georgia, serif;
   font-size: clamp(4.5rem, 10vw, 8rem);
   font-weight: 400;
+  font-variant-numeric: tabular-nums;
   letter-spacing: -0.07em;
   line-height: 0.9;
+  text-shadow:
+    0 0 0.2rem rgba(239, 234, 221, 0.98),
+    0 0 0.75rem rgba(239, 234, 221, 0.96),
+    0 0 1.8rem rgba(239, 234, 221, 0.84);
+}
+
+.loading-mark strong::before {
+  position: absolute;
+  z-index: -1;
+  inset: -0.42em -0.5em;
+  border-radius: 46% 54% 42% 58% / 57% 44% 56% 43%;
+  background: radial-gradient(ellipse, rgba(239, 234, 221, 0.92), rgba(239, 234, 221, 0.44) 48%, transparent 76%);
+  content: "";
+  filter: blur(0.42rem);
 }
 
 .loading-mark strong small {
@@ -481,6 +500,16 @@ button:focus-visible { outline: 2px solid #c05a4c; outline-offset: 5px; }
   transition: opacity 0.3s linear;
   will-change: opacity;
   background: var(--paper);
+}
+
+.mountain-webgl.is-unavailable { display: none; }
+
+.scene-fallback {
+  position: absolute;
+  inset: 0;
+  background-position: var(--focus-x) var(--focus-y);
+  background-size: cover;
+  filter: grayscale(1) sepia(0.08) contrast(1.04);
 }
 
 .mountain-webgl canvas,

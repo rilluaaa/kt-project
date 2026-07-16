@@ -2,7 +2,6 @@
 
 import { CSSProperties, lazy, MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-const ThreeMilkTeaStage = lazy(() => import("./ThreeMilkTeaStage"));
 const ThreeMountainStage = lazy(() => import("./ThreeMountainStage"));
 const ThreeInkOpening = lazy(() => import("./ThreeInkOpening"));
 
@@ -82,9 +81,6 @@ const cameraKeyframes: CameraKeyframe[] = [
   { yaw: -1, pitch: -3, roll: 0.3, depth: 46 },
   { yaw: 9, pitch: 2, roll: 0.7, depth: 76 },
 ];
-
-const sliceDepths = [-150, -72, -22, 0, -22, -72, -150];
-const sliceYaw = [13, 8, 3.5, 0, -3.5, -8, -13];
 
 type AudioEngine = {
   context: AudioContext;
@@ -638,7 +634,6 @@ export default function Home() {
     setRevealed((previous) => new Set(previous).add(current.id));
     setHoldProgress(100);
     setBlooming(true);
-    if (current.id !== "milk-tea") setBurstKey((value) => value + 1);
     setSceneEffect({ id: current.id, key: effectKey });
     window.setTimeout(() => setBlooming(false), 1900);
     window.setTimeout(() => setSceneEffect((active) => active?.key === effectKey ? null : active), 3100);
@@ -724,23 +719,19 @@ export default function Home() {
   }, [motion, reducedMotion]);
 
   const revealedImages = useMemo(() => new Set(Array.from(revealed).map((id) => beats.find((beat) => beat.id === id)?.image)), [revealed]);
-  const milkTeaSceneActive = current?.image === 1;
-  const milkTeaStageEnabled = true;
-  const milkTeaInteraction = Boolean(activeInteraction && current?.id === "milk-tea");
-  const mountainOpacity = visual.activeImage === 0 ? 1 - visual.sceneMix : visual.incomingImage === 0 ? visual.sceneMix : 0;
-  const milkTeaOpacity = visual.activeImage === 1 ? 1 - visual.sceneMix : visual.incomingImage === 1 ? visual.sceneMix : 0;
-  const milkTeaEffectKey = sceneEffect?.id === "milk-tea" ? sceneEffect.key : 0;
+  const cursorInteraction = Boolean(activeInteraction);
+  const interactionEffectKey = sceneEffect?.key ?? 0;
 
   return (
     <main
-      className={`experience${started ? " is-started" : ""}${current?.dark ? " is-dark" : ""}${blooming ? " is-blooming" : ""}${openingBloom ? " is-opening-bloom" : ""}${milkTeaStageEnabled && milkTeaSceneActive ? " is-webgl-milk-tea" : ""}${milkTeaInteraction ? " has-webgl-cursor-ink" : ""}${reducedMotion ? " reduce-motion" : ""}`}
+      className={`experience${started ? " is-started" : ""}${current?.dark ? " is-dark" : ""}${blooming ? " is-blooming" : ""}${openingBloom ? " is-opening-bloom" : ""}${cursorInteraction ? " has-webgl-cursor-ink" : ""}${reducedMotion ? " reduce-motion" : ""}`}
       ref={experienceRef}
       onPointerDown={handlePointerDown}
       onPointerUp={endHold}
       onPointerCancel={endHold}
       onPointerLeave={endHold}
     >
-      <InkReactor visible={ready} pointerEnabled={!milkTeaStageEnabled || !milkTeaSceneActive} holdProgress={milkTeaStageEnabled && milkTeaSceneActive ? 0 : holdProgress / 100} burstKey={burstKey} dark={Boolean(current?.dark)} origin={inkOrigin} />
+      <InkReactor visible={ready} pointerEnabled={!cursorInteraction} holdProgress={cursorInteraction ? 0 : holdProgress / 100} burstKey={burstKey} dark={Boolean(current?.dark)} origin={inkOrigin} />
 
       <div className={`loader${ready ? " is-ready" : ""}${started ? " is-hidden" : ""}`}>
         <div className="loader-scene" aria-hidden="true" />
@@ -783,19 +774,7 @@ export default function Home() {
               style={{ "--scene-opacity": opacity } as CSSProperties}
               key={image}
             >
-              <div className="scene-panorama">
-                {sliceDepths.map((depth, sliceIndex) => (
-                  <div
-                    className="scene-slice"
-                    style={{ "--slice": sliceIndex, "--slice-z": `${depth}px`, "--slice-yaw": `${sliceYaw[sliceIndex]}deg` } as CSSProperties}
-                    key={sliceIndex}
-                  >
-                    <div className="scene-slice__image" style={{ backgroundImage: `url(${image})` }} />
-                  </div>
-                ))}
-                <div className="scene-depth scene-depth--far" style={{ backgroundImage: `url(${image})` }} />
-                <div className="scene-depth scene-depth--near" style={{ backgroundImage: `url(${image})` }} />
-              </div>
+              <div className="scene-fallback" style={{ backgroundImage: `url(${image})` }} />
             </div>
           );
         })}
@@ -804,24 +783,14 @@ export default function Home() {
         <div className="paper-grain" />
       </div>
 
-      {started && mountainOpacity > 0.001 && (
+      {started && (
         <Suspense fallback={null}>
           <ThreeMountainStage
-            opacity={mountainOpacity}
+            opacity={1}
             cameraPhase={motion.index + motion.amount}
-            reducedMotion={reducedMotion}
-          />
-        </Suspense>
-      )}
-
-      {started && milkTeaStageEnabled && milkTeaOpacity > 0.001 && (
-        <Suspense fallback={null}>
-          <ThreeMilkTeaStage
-            opacity={milkTeaOpacity}
-            cameraPhase={motion.index + motion.amount}
-            pointerActive={milkTeaInteraction}
+            pointerActive={cursorInteraction}
             holdProgress={holdProgress / 100}
-            effectKey={milkTeaEffectKey}
+            effectKey={interactionEffectKey}
             reducedMotion={reducedMotion}
           />
         </Suspense>
@@ -831,7 +800,7 @@ export default function Home() {
 
       {activeInteraction && (
         <button
-          className={`ink-control${milkTeaInteraction ? " is-cursor-bound" : ""}`}
+          className="ink-control is-cursor-bound"
           style={{ "--ink-progress": `${holdProgress / 100}` } as CSSProperties}
           onPointerDown={(event) => { event.stopPropagation(); beginHold(); }}
           onPointerUp={(event) => { event.stopPropagation(); endHold(); }}
@@ -878,7 +847,7 @@ export default function Home() {
             <button className="explore-button" onClick={() => window.scrollTo({ top: 0, behavior: reducedMotion ? "auto" : "smooth" })}>
               探索葵青 <span aria-hidden="true">↗</span>
             </button>
-            <small>探索內容即將展開</small>
+            <small>九幕已完 · 墨脈仍在流動</small>
           </div>
         </article>
       </section>
