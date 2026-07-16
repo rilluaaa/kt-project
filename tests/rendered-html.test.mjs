@@ -82,18 +82,41 @@ test("references the complete six-scene continuous ink panorama", async () => {
   assert.match(html, /古風配樂/);
 });
 
-test("ships the milk-tea Three.js depth mesh and WebGL ink shaders", async () => {
+test("ships the milk-tea 270-degree Three.js set and WebGL ink shaders", async () => {
   const source = await readFile(new URL("../app/ThreeMilkTeaStage.tsx", import.meta.url), "utf8");
   const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
-  const depthMap = await stat(new URL("../public/ink/scene-02-depth.png", import.meta.url));
+  const milkTeaAssets = [
+    "building-front.jpg",
+    "building-left.jpg",
+    "building-rear.jpg",
+    "building-right.jpg",
+    "building-roof.jpg",
+    "tea-master-turntable.jpg",
+    "woodworker-turntable.jpg",
+    "youth-turntable.jpg",
+    "bus-turntable.jpg",
+    "diners-turntable.jpg",
+    "distant-panorama.jpg",
+    "ground-texture.jpg",
+  ];
 
   assert.match(source, /new THREE\.WebGLRenderer/);
-  assert.match(source, /new THREE\.PlaneGeometry\(2, 2/);
-  assert.match(source, /sceneVertexShader/);
+  assert.match(source, /new THREE\.BoxGeometry/);
+  assert.match(source, /new THREE\.CylinderGeometry/);
+  assert.match(source, /new THREE\.TubeGeometry/);
+  assert.match(source, /progress \* 270/);
+  assert.match(source, /tea-master-turntable\.jpg/);
+  assert.match(source, /woodworker-turntable\.jpg/);
+  assert.match(source, /building-roof\.jpg/);
+  assert.match(source, /pixelScaleX/);
+  assert.match(source, /keyedFragmentShader/);
   assert.match(source, /overlayFragmentShader/);
-  assert.match(source, /uDepthMap/);
   assert.match(source, /uEffectTime/);
   assert.match(page, /has-webgl-cursor-ink/);
   assert.match(page, /ThreeMilkTeaStage/);
-  assert.ok(depthMap.size > 100_000, "milk-tea depth map should contain full-scene depth data");
+
+  for (const assetName of milkTeaAssets) {
+    const asset = await stat(new URL(`../public/ink/milk-tea/${assetName}`, import.meta.url));
+    assert.ok(asset.size > 200_000, `${assetName} should contain a production 3D scene asset`);
+  }
 });

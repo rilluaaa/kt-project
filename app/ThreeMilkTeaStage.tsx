@@ -12,71 +12,48 @@ type MilkTeaStageProps = {
   reducedMotion: boolean;
 };
 
-const sceneVertexShader = /* glsl */ `
+const keyedVertexShader = /* glsl */ `
   varying vec2 vUv;
-  varying float vRelief;
-  uniform sampler2D uTexture;
-  uniform sampler2D uDepthMap;
-  uniform float uDepth;
-  uniform float uTime;
-  uniform float uEffect;
-
-  float gaussian(vec2 point, vec2 centre, vec2 spread) {
-    vec2 delta = (point - centre) / spread;
-    return exp(-dot(delta, delta) * 2.0);
-  }
-
   void main() {
     vUv = uv;
-    vec3 point = position;
-    vec3 ink = texture2D(uTexture, uv).rgb;
-    float measuredDepth = texture2D(uDepthMap, uv).r;
-    float darkness = 1.0 - dot(ink, vec3(0.299, 0.587, 0.114));
-
-    float relief = -0.28;
-    relief += (1.0 - smoothstep(0.52, 0.92, uv.y)) * 0.20;
-    relief += gaussian(uv, vec2(0.54, 0.49), vec2(0.15, 0.25)) * 0.33;
-    relief += gaussian(uv, vec2(0.82, 0.46), vec2(0.24, 0.36)) * 0.24;
-    relief += gaussian(uv, vec2(0.18, 0.24), vec2(0.18, 0.22)) * 0.22;
-    relief += smoothstep(0.46, 0.03, uv.y) * 0.22;
-    relief += darkness * 0.07;
-    relief -= gaussian(uv, vec2(0.18, 0.78), vec2(0.21, 0.18)) * 0.13;
-    relief = mix(relief, (measuredDepth - 0.43) * 1.16, 0.78);
-    vRelief = relief;
-
-    point.z += relief * uDepth;
-    float cinematicWave = sin(uv.x * 13.0 + uTime * 1.2) * sin(uv.y * 9.0 - uTime) * 0.035;
-    point.z += cinematicWave * uEffect;
-    point.x += sin(uv.y * 7.0 + uTime * 0.7) * 0.018 * uEffect;
-
-    gl_Position = projectionMatrix * modelViewMatrix * vec4(point, 1.0);
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
   }
 `;
 
-const sceneFragmentShader = /* glsl */ `
+const keyedFragmentShader = /* glsl */ `
+  precision highp float;
   varying vec2 vUv;
-  varying float vRelief;
-  uniform sampler2D uTexture;
-  uniform float uTime;
-  uniform float uEffect;
+  uniform sampler2D uMap;
+  uniform vec2 uGrid;
+  uniform float uFrame;
+  uniform float uTea;
 
-  float hash(vec2 point) {
-    return fract(sin(dot(point, vec2(127.1, 311.7))) * 43758.5453123);
+  vec2 frameUv(float frame) {
+    float columns = uGrid.x;
+    float rows = uGrid.y;
+    float index = mod(frame, columns * rows);
+    float column = mod(index, columns);
+    float rowFromTop = floor(index / columns);
+    return vec2((vUv.x + column) / columns, (vUv.y + rows - 1.0 - rowFromTop) / rows);
   }
 
   void main() {
-    vec3 colour = texture2D(uTexture, vUv).rgb;
-    float paper = hash(floor(vUv * vec2(980.0, 660.0)) + floor(uTime * 0.35)) - 0.5;
-    colour += paper * 0.014;
+    float first = floor(uFrame);
+    float blend = smoothstep(0.36, 0.64, fract(uFrame));
+    vec4 a = texture2D(uMap, frameUv(first));
+    vec4 b = texture2D(uMap, frameUv(first + 1.0));
+    vec3 colour = mix(a.rgb, b.rgb, blend);
 
-    vec3 teaGrade = colour * vec3(1.10, 0.91, 0.72);
-    colour = mix(colour, teaGrade, uEffect * 0.58);
-    colour *= 1.0 + vRelief * 0.07;
+    float lightness = dot(colour, vec3(0.299, 0.587, 0.114));
+    float chroma = max(colour.r, max(colour.g, colour.b)) - min(colour.r, min(colour.g, colour.b));
+    float paper = smoothstep(0.77, 0.955, lightness) * (1.0 - smoothstep(0.025, 0.13, chroma));
+    float alpha = 1.0 - paper;
+    alpha = smoothstep(0.035, 0.82, alpha);
+    if (alpha < 0.055) discard;
 
-    vec2 centred = vUv - 0.5;
-    float vignette = smoothstep(0.84, 0.24, dot(centred, centred));
-    colour *= mix(0.86, 1.04, vignette);
-    gl_FragColor = vec4(colour, 1.0);
+    vec3 teaGrade = colour * vec3(1.08, 0.92, 0.76);
+    colour = mix(colour, teaGrade, uTea * 0.42);
+    gl_FragColor = vec4(colour, alpha * 0.98);
   }
 `;
 
@@ -116,9 +93,9 @@ const overlayFragmentShader = /* glsl */ `
   float fbm(vec2 point) {
     float value = 0.0;
     float amplitude = 0.52;
-    for (int octave = 0; octave < 5; octave++) {
+    for (int octave = 0; octave < 6; octave++) {
       value += noise(point) * amplitude;
-      point = point * 2.04 + vec2(17.7, 9.2);
+      point = point * 2.03 + vec2(17.7, 9.2);
       amplitude *= 0.5;
     }
     return value;
@@ -130,64 +107,70 @@ const overlayFragmentShader = /* glsl */ `
     vec2 point = (frag - uPointer) / shortest;
     float distanceToPointer = length(point);
     float angle = atan(point.y, point.x);
-    float fibre = fbm(vec2(angle * 1.7 + uTime * 0.045, distanceToPointer * 24.0 - uTime * 0.07));
-    float radius = mix(0.052, 0.122, uHold);
-    float irregularEdge = radius + (fibre - 0.5) * mix(0.014, 0.032, uHold);
-    float inkCore = smoothstep(irregularEdge + 0.006, irregularEdge - 0.007, distanceToPointer);
-    float wetEdge = smoothstep(irregularEdge + 0.025, irregularEdge + 0.002, distanceToPointer) - inkCore * 0.28;
+
+    float fibres = fbm(vec2(angle * 1.85 + uTime * 0.035, distanceToPointer * 27.0 - uTime * 0.06));
+    float veins = fbm(vec2(angle * 6.0 - uTime * 0.02, distanceToPointer * 58.0));
+    float radius = mix(0.052, 0.148, uHold);
+    float irregularEdge = radius + (fibres - 0.5) * mix(0.016, 0.046, uHold) + (veins - 0.5) * 0.008;
+    float inkCore = smoothstep(irregularEdge + 0.009, irregularEdge - 0.008, distanceToPointer);
+    float wetEdge = smoothstep(irregularEdge + 0.038, irregularEdge + 0.002, distanceToPointer) - inkCore * 0.4;
 
     float droplets = 0.0;
-    for (int index = 0; index < 14; index++) {
+    for (int index = 0; index < 22; index++) {
       float fi = float(index);
       float seed = hash(vec2(fi, 9.7));
-      float dropAngle = fi * 2.39996 + seed;
-      float dropDistance = radius * (1.28 + seed * 0.92 + uHold * 0.24);
+      float dropAngle = fi * 2.39996 + seed * 1.7;
+      float dropDistance = radius * (1.16 + seed * 1.24 + uHold * 0.34);
       vec2 dropCentre = vec2(cos(dropAngle), sin(dropAngle)) * dropDistance;
-      float dropRadius = mix(0.0022, 0.0065, hash(vec2(fi, 3.1))) * (0.45 + uHold);
-      droplets += smoothstep(dropRadius, dropRadius * 0.35, length(point - dropCentre));
+      float dropRadius = mix(0.0018, 0.0078, hash(vec2(fi, 3.1))) * (0.5 + uHold);
+      droplets += smoothstep(dropRadius, dropRadius * 0.32, length(point - dropCentre));
     }
 
-    float capillary = smoothstep(0.009, 0.0, abs(sin(angle * 7.0 + fibre * 4.0)) * 0.012 + abs(distanceToPointer - radius * 1.32));
-    capillary *= smoothstep(radius * 1.9, radius * 1.04, distanceToPointer) * uHold;
+    float capillary = smoothstep(0.012, 0.0, abs(sin(angle * 9.0 + fibres * 5.0)) * 0.015 + abs(distanceToPointer - radius * 1.34));
+    capillary *= smoothstep(radius * 2.15, radius * 1.04, distanceToPointer) * uHold;
 
-    vec3 colour = vec3(0.025, 0.038, 0.030);
-    float alpha = (inkCore * 0.80 + wetEdge * 0.30 + droplets * 0.68 + capillary * 0.30) * uActive;
+    vec3 colour = vec3(0.018, 0.026, 0.021);
+    float alpha = (inkCore * 0.84 + wetEdge * 0.24 + droplets * 0.66 + capillary * 0.34) * uActive;
 
     if (uEffectTime >= 0.0) {
-      float enter = smoothstep(0.0, 0.36, uEffectTime);
-      float leave = 1.0 - smoothstep(3.35, 4.15, uEffectTime);
+      float enter = smoothstep(0.0, 0.38, uEffectTime);
+      float leave = 1.0 - smoothstep(3.55, 4.45, uEffectTime);
       float envelope = enter * leave;
-      float fall = smoothstep(0.0, 1.18, uEffectTime);
-      float streamX = 0.5 + sin(vUv.y * 7.5 + uEffectTime * 1.6) * 0.055;
-      float streamWidth = mix(0.018, 0.078, smoothstep(0.0, 0.75, uEffectTime));
-      float stream = smoothstep(streamWidth, streamWidth * 0.22, abs(vUv.x - streamX));
-      stream *= smoothstep(1.08 - fall * 1.48, 1.18 - fall * 1.48, vUv.y);
-      stream *= 1.0 - smoothstep(-0.22 - fall, 0.02 - fall, vUv.y);
+      vec2 aspectPoint = (vUv - 0.5) * vec2(uResolution.x / uResolution.y, 1.0);
+      float bloomNoise = fbm(aspectPoint * 3.8 - vec2(uEffectTime * 0.18, uEffectTime * 0.12));
+      float bloomRadius = uEffectTime * 0.43;
+      float bloomEdge = bloomRadius + (bloomNoise - 0.5) * 0.26;
+      float bloom = smoothstep(bloomEdge + 0.08, bloomEdge - 0.06, length(aspectPoint));
 
-      float steamNoise = fbm(vec2(vUv.x * 5.2 + sin(vUv.y * 8.0) * 0.18, vUv.y * 3.4 - uEffectTime * 0.52));
-      float steam = smoothstep(0.52, 0.78, steamNoise);
-      steam *= smoothstep(0.58, 0.12, abs(vUv.x - 0.5));
-      steam *= smoothstep(0.55, 1.0, uEffectTime) * leave;
+      float teaFall = smoothstep(0.0, 1.22, uEffectTime);
+      float streamX = 0.5 + sin(vUv.y * 7.5 + uEffectTime * 1.6) * 0.05;
+      float streamWidth = mix(0.012, 0.082, smoothstep(0.0, 0.8, uEffectTime));
+      float stream = smoothstep(streamWidth, streamWidth * 0.2, abs(vUv.x - streamX));
+      stream *= smoothstep(1.08 - teaFall * 1.5, 1.18 - teaFall * 1.5, vUv.y);
+      stream *= 1.0 - smoothstep(-0.25 - teaFall, 0.03 - teaFall, vUv.y);
 
-      float wave = abs(length((vUv - 0.5) * vec2(uResolution.x / uResolution.y, 1.0)) - uEffectTime * 0.25);
-      float shockwave = smoothstep(0.025, 0.0, wave) * leave;
-      vec3 teaColour = vec3(0.36, 0.17, 0.075);
+      float steamNoise = fbm(vec2(vUv.x * 5.0 + sin(vUv.y * 8.0) * 0.16, vUv.y * 3.4 - uEffectTime * 0.5));
+      float steam = smoothstep(0.52, 0.79, steamNoise) * smoothstep(0.62, 0.08, abs(vUv.x - 0.5));
+      steam *= smoothstep(0.48, 1.0, uEffectTime) * leave;
+
+      vec3 teaColour = vec3(0.35, 0.16, 0.062);
       vec3 steamColour = vec3(0.92, 0.86, 0.72);
-      colour = mix(colour, teaColour, stream * 0.88);
-      colour = mix(colour, steamColour, steam * 0.48);
-      alpha = max(alpha * leave, stream * 0.82 * envelope + steam * 0.26 + shockwave * 0.25);
-      alpha += envelope * 0.075;
+      colour = mix(colour, teaColour, stream * 0.9 + bloom * 0.13);
+      colour = mix(colour, steamColour, steam * 0.5);
+      alpha = max(alpha * leave, bloom * 0.33 * envelope + stream * 0.84 * envelope + steam * 0.24);
     }
 
-    gl_FragColor = vec4(colour, clamp(alpha, 0.0, 0.94));
+    gl_FragColor = vec4(colour, clamp(alpha, 0.0, 0.95));
   }
 `;
 
-const smoothEnvelope = (time: number) => {
-  const enter = Math.min(1, Math.max(0, time / 0.48));
-  const exit = 1 - Math.min(1, Math.max(0, (time - 3.25) / 0.85));
-  return enter * enter * (3 - 2 * enter) * exit;
+type SpriteRecord = {
+  mesh: THREE.Mesh<THREE.PlaneGeometry, THREE.ShaderMaterial>;
+  material: THREE.ShaderMaterial;
 };
+
+const ease = (value: number) => value * value * (3 - 2 * value);
+const clamp01 = (value: number) => Math.min(1, Math.max(0, value));
 
 export default function ThreeMilkTeaStage({ opacity, cameraPhase, pointerActive, holdProgress, effectKey, reducedMotion }: MilkTeaStageProps) {
   const hostRef = useRef<HTMLDivElement>(null);
@@ -216,69 +199,166 @@ export default function ThreeMilkTeaStage({ opacity, cameraPhase, pointerActive,
       host.closest(".experience")?.classList.add("webgl-unavailable");
       return;
     }
+
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.autoClear = false;
-    renderer.setClearColor(0x000000, 0);
+    renderer.setClearColor(0xeae3d5, 1);
     renderer.domElement.setAttribute("aria-hidden", "true");
     host.appendChild(renderer.domElement);
 
     const lowPower = (navigator.hardwareConcurrency || 8) <= 4;
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(39, 1, 0.1, 20);
-    camera.position.set(0, 0, 3.75);
-
-    const geometry = new THREE.PlaneGeometry(2, 2, lowPower ? 92 : 156, lowPower ? 62 : 104);
-    const texture = new THREE.Texture();
-    const depthTexture = new THREE.Texture();
-    const sceneUniforms = {
-      uTexture: { value: texture },
-      uDepthMap: { value: depthTexture },
-      uDepth: { value: 0.78 },
-      uTime: { value: 0 },
-      uEffect: { value: 0 },
-    };
-    const material = new THREE.ShaderMaterial({
-      uniforms: sceneUniforms,
-      vertexShader: sceneVertexShader,
-      fragmentShader: sceneFragmentShader,
-      side: THREE.DoubleSide,
-    });
-    material.visible = false;
-    const panorama = new THREE.Mesh(geometry, material);
-    scene.add(panorama);
+    scene.fog = new THREE.FogExp2(0xded6c7, 0.027);
+    const camera = new THREE.PerspectiveCamera(48, 1, 0.08, 70);
+    const world = new THREE.Group();
+    scene.add(world);
 
     const textureLoader = new THREE.TextureLoader();
-    let texturesReady = 0;
-    const revealWhenReady = () => {
-      texturesReady += 1;
-      if (texturesReady === 2) material.visible = true;
+    const textures: THREE.Texture[] = [];
+    const materials: THREE.Material[] = [];
+    const geometries: THREE.BufferGeometry[] = [];
+    const sprites: SpriteRecord[] = [];
+
+    const loadTexture = (url: string, repeat = false) => {
+      const texture = textureLoader.load(url);
+      texture.colorSpace = THREE.SRGBColorSpace;
+      texture.minFilter = THREE.LinearMipmapLinearFilter;
+      texture.magFilter = THREE.LinearFilter;
+      texture.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+      if (repeat) {
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+      }
+      textures.push(texture);
+      return texture;
     };
 
-    textureLoader.load("/ink/scene-02-street-crafts.webp", (loaded) => {
-      if (disposed) {
-        loaded.dispose();
-        return;
-      }
-      loaded.colorSpace = THREE.SRGBColorSpace;
-      loaded.minFilter = THREE.LinearMipmapLinearFilter;
-      loaded.magFilter = THREE.LinearFilter;
-      loaded.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
-      sceneUniforms.uTexture.value = loaded;
-      texture.dispose();
-      revealWhenReady();
-    });
-    textureLoader.load("/ink/scene-02-depth.png", (loaded) => {
-      if (disposed) {
-        loaded.dispose();
-        return;
-      }
-      loaded.colorSpace = THREE.NoColorSpace;
-      loaded.minFilter = THREE.LinearFilter;
-      loaded.magFilter = THREE.LinearFilter;
-      sceneUniforms.uDepthMap.value = loaded;
-      depthTexture.dispose();
-      revealWhenReady();
-    });
+    const keyMaterial = (texture: THREE.Texture, columns = 1, rows = 1) => {
+      const material = new THREE.ShaderMaterial({
+        uniforms: {
+          uMap: { value: texture },
+          uGrid: { value: new THREE.Vector2(columns, rows) },
+          uFrame: { value: 0 },
+          uTea: { value: 0 },
+        },
+        vertexShader: keyedVertexShader,
+        fragmentShader: keyedFragmentShader,
+        transparent: true,
+        side: THREE.DoubleSide,
+        depthWrite: true,
+      });
+      materials.push(material);
+      return material;
+    };
+
+    const addKeyedPlane = (
+      url: string,
+      size: [number, number],
+      position: [number, number, number],
+      rotation: [number, number, number] = [0, 0, 0],
+      grid: [number, number] = [1, 1],
+      isSprite = false,
+    ) => {
+      const geometry = new THREE.PlaneGeometry(size[0], size[1]);
+      geometries.push(geometry);
+      const material = keyMaterial(loadTexture(url), grid[0], grid[1]);
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.position.set(...position);
+      mesh.rotation.set(...rotation);
+      mesh.renderOrder = isSprite ? 4 : 2;
+      world.add(mesh);
+      if (isSprite) sprites.push({ mesh, material });
+      return mesh;
+    };
+
+    const groundTexture = loadTexture("/ink/milk-tea/ground-texture.jpg", true);
+    groundTexture.repeat.set(2.2, 2.2);
+    const groundMaterial = new THREE.MeshBasicMaterial({ map: groundTexture, color: 0xbeb8ae });
+    materials.push(groundMaterial);
+    const groundGeometry = new THREE.PlaneGeometry(32, 32, 1, 1);
+    geometries.push(groundGeometry);
+    const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.y = -0.03;
+    world.add(ground);
+
+    const panoramaTexture = loadTexture("/ink/milk-tea/distant-panorama.jpg");
+    const panoramaMaterial = new THREE.MeshBasicMaterial({ map: panoramaTexture, side: THREE.BackSide, color: 0xe1d9cc });
+    materials.push(panoramaMaterial);
+    const panoramaGeometry = new THREE.CylinderGeometry(19, 19, 9.5, lowPower ? 36 : 72, 1, true, THREE.MathUtils.degToRad(-150), THREE.MathUtils.degToRad(300));
+    geometries.push(panoramaGeometry);
+    const panorama = new THREE.Mesh(panoramaGeometry, panoramaMaterial);
+    panorama.position.y = 4.35;
+    panorama.rotation.y = THREE.MathUtils.degToRad(8);
+    world.add(panorama);
+
+    const shellGeometry = new THREE.BoxGeometry(7.05, 3.45, 4.15);
+    geometries.push(shellGeometry);
+    const shellMaterial = new THREE.MeshStandardMaterial({ color: 0xc8c0b1, roughness: 1, metalness: 0 });
+    materials.push(shellMaterial);
+    const shell = new THREE.Mesh(shellGeometry, shellMaterial);
+    shell.position.set(0.65, 1.7, 0);
+    world.add(shell);
+
+    const edgesGeometry = new THREE.EdgesGeometry(shellGeometry, 34);
+    geometries.push(edgesGeometry);
+    const edgesMaterial = new THREE.LineBasicMaterial({ color: 0x393934, transparent: true, opacity: 0.35 });
+    materials.push(edgesMaterial);
+    const edges = new THREE.LineSegments(edgesGeometry, edgesMaterial);
+    edges.position.copy(shell.position);
+    world.add(edges);
+
+    addKeyedPlane("/ink/milk-tea/building-front.jpg", [7.7, 5.13], [0.65, 2.05, 2.09]);
+    addKeyedPlane("/ink/milk-tea/building-rear.jpg", [7.7, 5.13], [0.65, 2.05, -2.09], [0, Math.PI, 0]);
+    addKeyedPlane("/ink/milk-tea/building-left.jpg", [4.7, 4.7], [-2.89, 2.0, 0], [0, -Math.PI / 2, 0]);
+    addKeyedPlane("/ink/milk-tea/building-right.jpg", [4.7, 4.7], [4.19, 2.0, 0], [0, Math.PI / 2, 0]);
+    addKeyedPlane("/ink/milk-tea/building-roof.jpg", [7.6, 5.06], [0.65, 3.44, 0], [-Math.PI / 2, 0, 0]);
+
+    const interior = addKeyedPlane("/ink/milk-tea/interior-walls.jpg", [4.25, 2.84], [1.2, 1.55, 2.13]);
+    interior.renderOrder = 3;
+
+    addKeyedPlane("/ink/milk-tea/tea-master-turntable.jpg", [2.75, 3.67], [0.05, 1.75, 3.0], [0, 0, 0], [4, 2], true);
+    addKeyedPlane("/ink/milk-tea/woodworker-turntable.jpg", [2.55, 3.4], [3.3, 1.62, 2.8], [0, 0, 0], [4, 2], true);
+    addKeyedPlane("/ink/milk-tea/diners-turntable.jpg", [2.35, 3.13], [-2.2, 1.47, 2.55], [0, 0, 0], [4, 2], true);
+    addKeyedPlane("/ink/milk-tea/youth-turntable.jpg", [1.9, 2.53], [-3.8, 1.2, 3.55], [0, 0, 0], [4, 2], true);
+    addKeyedPlane("/ink/milk-tea/bus-turntable.jpg", [2.7, 3.6], [-5.35, 1.45, -0.2], [0, 0, 0], [4, 2], true);
+
+    const inkCurve = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(-7.2, 0.12, 4.2),
+      new THREE.Vector3(-4.5, 0.18, 2.6),
+      new THREE.Vector3(-2.0, 0.22, 3.3),
+      new THREE.Vector3(0.1, 0.25, 3.55),
+      new THREE.Vector3(2.3, 0.2, 2.4),
+      new THREE.Vector3(4.8, 0.16, 0.7),
+      new THREE.Vector3(6.4, 0.12, -2.5),
+    ]);
+    const ribbonGeometry = new THREE.TubeGeometry(inkCurve, lowPower ? 72 : 140, 0.055, 8, false);
+    geometries.push(ribbonGeometry);
+    const ribbonMaterial = new THREE.MeshBasicMaterial({ color: 0x111714, transparent: true, opacity: 0.72 });
+    materials.push(ribbonMaterial);
+    const ribbon = new THREE.Mesh(ribbonGeometry, ribbonMaterial);
+    ribbon.renderOrder = 5;
+    world.add(ribbon);
+
+    const particleCount = lowPower ? 330 : 720;
+    const particlePositions = new Float32Array(particleCount * 3);
+    for (let index = 0; index < particleCount; index += 1) {
+      particlePositions[index * 3] = (Math.random() - 0.5) * 18;
+      particlePositions[index * 3 + 1] = Math.random() * 6.5;
+      particlePositions[index * 3 + 2] = (Math.random() - 0.5) * 15;
+    }
+    const particleGeometry = new THREE.BufferGeometry();
+    particleGeometry.setAttribute("position", new THREE.BufferAttribute(particlePositions, 3));
+    geometries.push(particleGeometry);
+    const particleMaterial = new THREE.PointsMaterial({ color: 0x202722, size: 0.028, transparent: true, opacity: 0.16, depthWrite: false });
+    materials.push(particleMaterial);
+    const particles = new THREE.Points(particleGeometry, particleMaterial);
+    world.add(particles);
+
+    scene.add(new THREE.HemisphereLight(0xf6efe2, 0x56534d, 2.2));
+    const keyLight = new THREE.DirectionalLight(0xffecd1, 2.4);
+    keyLight.position.set(-6, 10, 8);
+    scene.add(keyLight);
 
     const overlayScene = new THREE.Scene();
     const overlayCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
@@ -298,13 +378,17 @@ export default function ThreeMilkTeaStage({ opacity, cameraPhase, pointerActive,
       depthTest: false,
       depthWrite: false,
     });
-    const overlay = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), overlayMaterial);
+    materials.push(overlayMaterial);
+    const overlayGeometry = new THREE.PlaneGeometry(2, 2);
+    geometries.push(overlayGeometry);
+    const overlay = new THREE.Mesh(overlayGeometry, overlayMaterial);
     overlayScene.add(overlay);
 
-    const pointer = new THREE.Vector2(window.innerWidth / 2, window.innerHeight / 2);
-    const pointerTarget = pointer.clone();
+    const pointerCss = new THREE.Vector2(window.innerWidth / 2, window.innerHeight / 2);
+    const pointerTargetCss = pointerCss.clone();
+    const drawingBuffer = new THREE.Vector2();
     const onPointerMove = (event: PointerEvent) => {
-      pointerTarget.set(event.clientX, window.innerHeight - event.clientY);
+      pointerTargetCss.set(event.clientX, window.innerHeight - event.clientY);
     };
     window.addEventListener("pointermove", onPointerMove, { passive: true });
 
@@ -313,16 +397,10 @@ export default function ThreeMilkTeaStage({ opacity, cameraPhase, pointerActive,
       const height = Math.max(1, window.innerHeight);
       camera.aspect = width / height;
       camera.updateProjectionMatrix();
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, lowPower ? 1.2 : 1.65));
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, lowPower ? 1.15 : 1.55));
       renderer.setSize(width, height, false);
-      overlayUniforms.uResolution.value.set(width, height);
-
-      const viewHeight = 2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * camera.position.z;
-      const viewWidth = viewHeight * camera.aspect;
-      const imageAspect = 1.5;
-      const planeWidth = Math.max(viewWidth, viewHeight * imageAspect) * 1.18;
-      const planeHeight = Math.max(viewHeight, viewWidth / imageAspect) * 1.18;
-      panorama.scale.set(planeWidth / 2, planeHeight / 2, 1);
+      renderer.getDrawingBufferSize(drawingBuffer);
+      overlayUniforms.uResolution.value.copy(drawingBuffer);
     };
     resize();
     window.addEventListener("resize", resize);
@@ -331,29 +409,57 @@ export default function ThreeMilkTeaStage({ opacity, cameraPhase, pointerActive,
       if (disposed) return;
       const props = propsRef.current;
       const seconds = now * 0.001;
-      pointer.lerp(pointerTarget, props.reducedMotion ? 1 : 0.16);
+      pointerCss.lerp(pointerTargetCss, props.reducedMotion ? 1 : 0.15);
 
       let effectTime = -1;
       let effect = 0;
       if (effectStartedRef.current >= 0) {
         effectTime = (now - effectStartedRef.current) / 1000;
-        if (effectTime <= 4.2) effect = smoothEnvelope(effectTime);
-        else effectStartedRef.current = -1;
+        if (effectTime <= 4.5) {
+          const enter = clamp01(effectTime / 0.48);
+          const leave = 1 - clamp01((effectTime - 3.55) / 0.9);
+          effect = ease(enter) * leave;
+        } else effectStartedRef.current = -1;
       }
 
-      const pointerX = pointer.x / Math.max(1, window.innerWidth) - 0.5;
-      const pointerY = pointer.y / Math.max(1, window.innerHeight) - 0.5;
-      const drift = props.reducedMotion ? 0 : props.cameraPhase;
-      camera.position.x = Math.sin(drift * 0.73) * 0.21 + pointerX * 0.45 + effect * 0.09;
-      camera.position.y = Math.cos(drift * 0.51) * 0.075 + pointerY * 0.18 - effect * 0.035;
-      camera.position.z = 3.75 - effect * 0.52;
-      camera.rotation.z = props.reducedMotion ? 0 : Math.sin(drift * 0.38) * 0.009;
-      camera.lookAt(pointerX * 0.16, pointerY * 0.08, 0.02 + effect * 0.08);
+      const rawProgress = clamp01((props.cameraPhase - 3) / 4.95);
+      const progress = props.reducedMotion ? 0.08 : ease(rawProgress);
+      const angle = THREE.MathUtils.degToRad(-62 + progress * 270);
+      const radius = 7.8 - Math.sin(progress * Math.PI) * 1.05 - effect * 0.75;
+      const pointerX = pointerCss.x / Math.max(1, window.innerWidth) - 0.5;
+      const pointerY = pointerCss.y / Math.max(1, window.innerHeight) - 0.5;
+      const target = new THREE.Vector3(
+        THREE.MathUtils.lerp(-0.35, 1.55, progress),
+        1.42 + Math.sin(progress * Math.PI) * 0.18,
+        THREE.MathUtils.lerp(2.15, 0.6, progress),
+      );
 
-      sceneUniforms.uTime.value = seconds;
-      sceneUniforms.uEffect.value = effect;
+      camera.position.set(
+        target.x + Math.sin(angle) * radius + pointerX * 0.32,
+        2.0 + Math.sin(progress * Math.PI * 2.65) * 1.22 + pointerY * 0.2 + effect * 0.18,
+        target.z + Math.cos(angle) * radius,
+      );
+      camera.lookAt(target.x + pointerX * 0.12, target.y + pointerY * 0.08, target.z);
+      camera.rotateZ(Math.sin(progress * Math.PI * 2.0) * 0.018);
+
+      sprites.forEach(({ mesh, material }) => {
+        const vectorX = camera.position.x - mesh.position.x;
+        const vectorZ = camera.position.z - mesh.position.z;
+        let view = THREE.MathUtils.radToDeg(Math.atan2(vectorX, vectorZ)) / 45;
+        view = (view % 8 + 8) % 8;
+        material.uniforms.uFrame.value = view;
+        material.uniforms.uTea.value = effect;
+        mesh.lookAt(camera.position.x, mesh.position.y, camera.position.z);
+      });
+
+      particles.rotation.y = seconds * 0.012;
+      particles.position.y = Math.sin(seconds * 0.18) * 0.12;
+      ribbonMaterial.opacity = 0.58 + Math.sin(seconds * 0.9) * 0.1 + effect * 0.16;
+
+      const pixelScaleX = drawingBuffer.x / Math.max(1, window.innerWidth);
+      const pixelScaleY = drawingBuffer.y / Math.max(1, window.innerHeight);
       overlayUniforms.uTime.value = seconds;
-      overlayUniforms.uPointer.value.copy(pointer);
+      overlayUniforms.uPointer.value.set(pointerCss.x * pixelScaleX, pointerCss.y * pixelScaleY);
       overlayUniforms.uHold.value += (props.holdProgress - overlayUniforms.uHold.value) * 0.18;
       overlayUniforms.uActive.value += ((props.pointerActive ? 1 : 0) - overlayUniforms.uActive.value) * 0.13;
       overlayUniforms.uEffectTime.value = effectTime;
@@ -371,12 +477,9 @@ export default function ThreeMilkTeaStage({ opacity, cameraPhase, pointerActive,
       window.cancelAnimationFrame(frame);
       window.removeEventListener("pointermove", onPointerMove);
       window.removeEventListener("resize", resize);
-      geometry.dispose();
-      material.dispose();
-      sceneUniforms.uTexture.value.dispose();
-      sceneUniforms.uDepthMap.value.dispose();
-      overlay.geometry.dispose();
-      overlayMaterial.dispose();
+      textures.forEach((texture) => texture.dispose());
+      materials.forEach((material) => material.dispose());
+      geometries.forEach((geometry) => geometry.dispose());
       renderer.dispose();
       renderer.domElement.remove();
     };
