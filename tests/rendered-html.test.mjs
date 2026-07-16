@@ -82,44 +82,34 @@ test("references the complete six-scene continuous ink panorama", async () => {
   assert.match(html, /古箏配樂/);
 });
 
-test("ships the milk-tea 270-degree Three.js set and WebGL ink shaders", async () => {
-  const source = await readFile(new URL("../app/ThreeMilkTeaStage.tsx", import.meta.url), "utf8");
+test("ships the mountain WebGL camera and scroll-scrubbed milk-tea film", async () => {
+  const milkTeaSource = await readFile(new URL("../app/ThreeMilkTeaStage.tsx", import.meta.url), "utf8");
+  const mountainSource = await readFile(new URL("../app/ThreeMountainStage.tsx", import.meta.url), "utf8");
   const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
-  const milkTeaAssets = [
-    "building-front.jpg",
-    "building-left.jpg",
-    "building-rear.jpg",
-    "building-right.jpg",
-    "building-roof.jpg",
-    "tea-master-turntable.jpg",
-    "woodworker-turntable.jpg",
-    "youth-turntable.jpg",
-    "bus-turntable.jpg",
-    "diners-turntable.jpg",
-    "distant-panorama.jpg",
-    "ground-texture.jpg",
-  ];
+  const css = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
+  const film = await stat(new URL("../public/media/scene-02-milk-tea.mp4", import.meta.url));
 
-  assert.match(source, /new THREE\.WebGLRenderer/);
-  assert.match(source, /new THREE\.BoxGeometry/);
-  assert.match(source, /new THREE\.CylinderGeometry/);
-  assert.match(source, /new THREE\.TubeGeometry/);
-  assert.match(source, /progress \* 270/);
-  assert.match(source, /tea-master-turntable\.jpg/);
-  assert.match(source, /woodworker-turntable\.jpg/);
-  assert.match(source, /building-roof\.jpg/);
-  assert.match(source, /pixelScaleX/);
-  assert.match(source, /keyedFragmentShader/);
-  assert.match(source, /overlayFragmentShader/);
-  assert.match(source, /uEffectTime/);
+  assert.match(mountainSource, /new THREE\.WebGLRenderer/);
+  assert.match(mountainSource, /scene-01-mountain-city\.webp/);
+  assert.match(mountainSource, /uPhase/);
+  assert.match(mountainSource, /mist/);
+  assert.match(mountainSource, /1\.25/);
+  assert.match(milkTeaSource, /new THREE\.WebGLRenderer/);
+  assert.match(milkTeaSource, /scene-02-milk-tea\.mp4/);
+  assert.match(milkTeaSource, /video\.currentTime = targetTime/);
+  assert.match(milkTeaSource, /cameraPhase - 3/);
+  assert.match(milkTeaSource, /video\.pause\(\)/);
+  assert.match(milkTeaSource, /uEffect/);
+  assert.match(milkTeaSource, /uEffectOrigin/);
+  assert.match(milkTeaSource, /pressureRing/);
   assert.match(page, /has-webgl-cursor-ink/);
+  assert.match(page, /is-cursor-bound/);
+  assert.match(page, /ThreeMountainStage/);
   assert.match(page, /ThreeMilkTeaStage/);
-  assert.match(page, /milkTeaStageEnabled = false/, "the discontinuous turntable composite should remain disabled");
-
-  for (const assetName of milkTeaAssets) {
-    const asset = await stat(new URL(`../public/ink/milk-tea/${assetName}`, import.meta.url));
-    assert.ok(asset.size > 200_000, `${assetName} should contain a production 3D scene asset`);
-  }
+  assert.match(page, /milkTeaStageEnabled = true/);
+  assert.match(css, /\.milk-tea-film \{[\s\S]*inset: -6%/);
+  assert.match(css, /circle at 102% 103%/);
+  assert.ok(film.size > 1_000_000, "milk-tea film should contain the production 10-second scene");
 });
 
 test("renders loading percentage and journey entrance with a shared WebGL ink field", async () => {

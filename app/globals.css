@@ -471,6 +471,7 @@ button:focus-visible { outline: 2px solid #c05a4c; outline-offset: 5px; }
   transform: translateZ(210px);
 }
 
+.mountain-webgl,
 .milk-tea-webgl {
   position: fixed;
   z-index: 0;
@@ -479,12 +480,51 @@ button:focus-visible { outline: 2px solid #c05a4c; outline-offset: 5px; }
   pointer-events: none;
   transition: opacity 0.3s linear;
   will-change: opacity;
+  background: var(--paper);
 }
 
+.mountain-webgl canvas,
 .milk-tea-webgl canvas {
   display: block;
   width: 100%;
   height: 100%;
+}
+
+.milk-tea-film {
+  position: absolute;
+  z-index: 0;
+  inset: -6%;
+  width: 112%;
+  height: 112%;
+  object-fit: cover;
+  object-position: center 48%;
+  filter: grayscale(1) sepia(0.1) contrast(1.07) brightness(0.94);
+}
+
+.milk-tea-film-grade {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 102% 103%, rgba(18, 22, 19, 0.58), rgba(35, 38, 32, 0.16) 10%, transparent 20%),
+    radial-gradient(ellipse at center, transparent 54%, rgba(20, 23, 20, 0.22) 100%),
+    linear-gradient(180deg, rgba(238, 232, 216, 0.06), transparent 26%, transparent 70%, rgba(22, 25, 22, 0.13));
+  mix-blend-mode: multiply;
+}
+
+.milk-tea-ink-canvas {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+}
+
+@media (max-width: 720px) {
+  .milk-tea-film {
+    inset: -8%;
+    width: 116%;
+    height: 116%;
+  }
 }
 
 /* Sparse story text */

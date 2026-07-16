@@ -3,6 +3,7 @@
 import { CSSProperties, lazy, MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const ThreeMilkTeaStage = lazy(() => import("./ThreeMilkTeaStage"));
+const ThreeMountainStage = lazy(() => import("./ThreeMountainStage"));
 const ThreeInkOpening = lazy(() => import("./ThreeInkOpening"));
 
 type Beat = {
@@ -724,8 +725,9 @@ export default function Home() {
 
   const revealedImages = useMemo(() => new Set(Array.from(revealed).map((id) => beats.find((beat) => beat.id === id)?.image)), [revealed]);
   const milkTeaSceneActive = current?.image === 1;
-  const milkTeaStageEnabled = false;
+  const milkTeaStageEnabled = true;
   const milkTeaInteraction = Boolean(activeInteraction && current?.id === "milk-tea");
+  const mountainOpacity = visual.activeImage === 0 ? 1 - visual.sceneMix : visual.incomingImage === 0 ? visual.sceneMix : 0;
   const milkTeaOpacity = visual.activeImage === 1 ? 1 - visual.sceneMix : visual.incomingImage === 1 ? visual.sceneMix : 0;
   const milkTeaEffectKey = sceneEffect?.id === "milk-tea" ? sceneEffect.key : 0;
 
@@ -801,6 +803,16 @@ export default function Home() {
         <div className="atmosphere atmosphere--near" />
         <div className="paper-grain" />
       </div>
+
+      {started && mountainOpacity > 0.001 && (
+        <Suspense fallback={null}>
+          <ThreeMountainStage
+            opacity={mountainOpacity}
+            cameraPhase={motion.index + motion.amount}
+            reducedMotion={reducedMotion}
+          />
+        </Suspense>
+      )}
 
       {started && milkTeaStageEnabled && milkTeaOpacity > 0.001 && (
         <Suspense fallback={null}>
