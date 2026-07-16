@@ -616,7 +616,7 @@ export default function Home() {
     const engine = audioRef.current;
     if (engine) {
       window.clearInterval(engine.timer);
-      void engine.context.close();
+      if (engine.context.state !== "closed") void engine.context.close().catch(() => undefined);
     }
   }, []);
 
