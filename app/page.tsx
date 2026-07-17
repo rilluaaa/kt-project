@@ -2,6 +2,8 @@
 
 import { CSSProperties, lazy, MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+export const dynamic = "force-static";
+
 const ThreeMountainStage = lazy(() => import("./ThreeMountainStage"));
 const ThreeInkOpening = lazy(() => import("./ThreeInkOpening"));
 
@@ -25,6 +27,9 @@ type CameraKeyframe = {
   depth: number;
 };
 
+const assetPrefix = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+const assetUrl = (path: string) => `${assetPrefix}${path}`;
+
 const sceneImages = [
   "/ink/scene-01-mountain-city.webp",
   "/ink/scene-02-street-crafts.webp",
@@ -32,7 +37,7 @@ const sceneImages = [
   "/ink/scene-04-harbour-port.webp",
   "/ink/scene-05-tsing-yi-opera.webp",
   "/ink/scene-06-mooncake-home.webp",
-];
+].map(assetUrl);
 
 const beats: Beat[] = [
   { id: "mist", image: 0, place: "山脊 · 清晨", text: ["霧還未散。", "山城在紙上，靜靜呼吸。"], align: "left", focus: [36, 42], scale: 1.02 },
@@ -725,6 +730,7 @@ export default function Home() {
   return (
     <main
       className={`experience${started ? " is-started" : ""}${current?.dark ? " is-dark" : ""}${blooming ? " is-blooming" : ""}${openingBloom ? " is-opening-bloom" : ""}${cursorInteraction ? " has-webgl-cursor-ink" : ""}${reducedMotion ? " reduce-motion" : ""}`}
+      style={{ "--loader-scene-image": `url(${assetUrl("/ink/scene-01-mountain-city.webp")})` } as CSSProperties}
       ref={experienceRef}
       onPointerDown={handlePointerDown}
       onPointerUp={endHold}

@@ -3,6 +3,8 @@
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
 
+const assetPrefix = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+
 type MilkTeaStageProps = {
   opacity: number;
   cameraPhase: number;
@@ -220,7 +222,7 @@ export default function ThreeMilkTeaStage({ opacity, cameraPhase, pointerActive,
 
   return (
     <div className="milk-tea-webgl is-video-stage" style={{ opacity }} ref={hostRef} aria-hidden="true">
-      <video ref={videoRef} className="milk-tea-film" src="/media/scene-02-milk-tea.mp4" preload="auto" muted playsInline />
+      <video ref={videoRef} className="milk-tea-film" src={`${assetPrefix}/media/scene-02-milk-tea.mp4`} preload="auto" muted playsInline />
       <div className="milk-tea-film-grade" />
     </div>
   );

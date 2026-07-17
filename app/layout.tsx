@@ -6,6 +6,8 @@ export const metadata: Metadata = {
   description: "跟隨一滴有記憶的墨，由山脊走過屋邨、工業區、海港與青衣，重新遇見葵青的人與非物質文化遺產。",
 };
 
+export const dynamic = "force-static";
+
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="zh-Hant">

@@ -3,6 +3,8 @@
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
 
+const assetPrefix = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+
 type MountainStageProps = {
   opacity: number;
   cameraPhase: number;
@@ -270,7 +272,7 @@ export default function ThreeMountainStage({ opacity, cameraPhase, pointerActive
     const overlayScene = new THREE.Scene();
     const interactionScene = new THREE.Scene();
     const overlayCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
-    const referenceTexture = new THREE.TextureLoader().load("/ink/scene-01-mountain-city.webp");
+    const referenceTexture = new THREE.TextureLoader().load(`${assetPrefix}/ink/scene-01-mountain-city.webp`);
     referenceTexture.colorSpace = THREE.SRGBColorSpace;
     referenceTexture.minFilter = THREE.LinearMipmapLinearFilter;
     referenceTexture.magFilter = THREE.LinearFilter;
