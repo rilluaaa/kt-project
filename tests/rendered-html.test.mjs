@@ -35,12 +35,14 @@ test("server-renders the complete 墨脈葵青 experience", async () => {
   assert.match(html, /role="status"/);
   assert.match(html, /aria-label="墨脈葵青故事"/);
   assert.match(html, /data-beat="0"/);
-  assert.match(html, /data-beat="21"/);
+  assert.match(html, /data-beat="9"/);
+  assert.match(html, /第一幕 · 山城入墨/);
+  assert.match(html, /第九幕 · 團圓留印/);
   assert.match(html, /下一筆/);
   assert.match(html, /探索葵青/);
   assert.match(html, /九幕已完 · 墨脈仍在流動/);
   assert.doesNotMatch(html, /即將展開/);
-  assert.doesNotMatch(html, /data-chapter|故事進度|第一幕|第二幕|第三幕/);
+  assert.doesNotMatch(html, /data-chapter|故事進度/);
 });
 
 test("includes all seven heritage memories and accessible controls", async () => {
@@ -73,8 +75,8 @@ test("references the complete six-scene continuous ink panorama", async () => {
     assert.ok(asset.size > 100_000, `${sceneFile} should contain a production scene`);
   }
 
-  const storyBeats = html.match(/data-beat="(?:[0-9]|1[0-9]|20)"/g) ?? [];
-  assert.equal(storyBeats.length, 21);
+  const storyBeats = html.match(/data-story-beat="true"/g) ?? [];
+  assert.equal(storyBeats.length, 9);
 
   const depthScenes = html.match(/data-depth-scene="[1-6]"/g) ?? [];
   assert.equal(depthScenes.length, 6, "all six scenes should render as 3D stages");
@@ -90,23 +92,16 @@ test("ships one continuous nine-act Three.js world with WebGL ink interaction", 
   const css = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
 
   assert.match(worldSource, /new THREE\.WebGLRenderer/);
-  assert.match(worldSource, /new THREE\.PerspectiveCamera/);
+  assert.match(worldSource, /new THREE\.OrthographicCamera/);
   assert.match(worldSource, /scene-01-mountain-city\.webp/);
-  assert.match(worldSource, /new THREE\.BoxGeometry/);
-  assert.match(worldSource, /new THREE\.TubeGeometry/);
-  assert.match(worldSource, /Math\.PI \* 1\.5/);
-  assert.match(worldSource, /const teaZone/);
-  assert.match(worldSource, /const woodZone/);
-  assert.match(worldSource, /const yulanZone/);
-  assert.match(worldSource, /const neonZone/);
-  assert.match(worldSource, /const harbourZone/);
-  assert.match(worldSource, /const operaZone/);
-  assert.match(worldSource, /const tinhauZone/);
-  assert.match(worldSource, /const homeZone/);
-  assert.match(worldSource, /const actRanges = \[\[0, 3\]/);
+  assert.match(worldSource, /scene-01-mountain-orbit-v1\.webp/);
+  assert.match(worldSource, /const actTexture = \[0, 1, 1, 2, 2, 3, 4, 4, 5\]/);
+  assert.match(worldSource, /const cameraProfiles/);
+  assert.match(worldSource, /dimensionalSample/);
+  assert.match(worldSource, /inkReveal/);
   assert.match(worldSource, /uEffectOrigin/);
-  assert.match(worldSource, /pressureRing/);
-  assert.match(worldSource, /zoneGroups\.forEach/);
+  assert.match(worldSource, /burstWash/);
+  assert.doesNotMatch(worldSource, /new THREE\.(?:Box|Sphere|Capsule|Tube)Geometry/);
   assert.match(page, /has-webgl-cursor-ink/);
   assert.match(page, /is-cursor-bound/);
   assert.match(page, /ThreeMountainStage/);

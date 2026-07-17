@@ -13,6 +13,9 @@ type Beat = {
   place?: string;
   text: string[];
   align: "left" | "right" | "center";
+  lane: "upper" | "middle" | "lower";
+  motion: "from-left" | "from-right" | "from-low" | "from-high" | "diagonal-left" | "diagonal-right" | "focus-in";
+  tilt: number;
   focus: [number, number];
   scale: number;
   dark?: boolean;
@@ -40,51 +43,27 @@ const sceneImages = [
 ].map(assetUrl);
 
 const beats: Beat[] = [
-  { id: "mist", image: 0, place: "山脊 · 清晨", text: ["霧還未散。", "山城在紙上，靜靜呼吸。"], align: "left", focus: [36, 42], scale: 1.02 },
-  { id: "ink-falls", image: 0, text: ["一滴沒有名字的墨，", "沿着石縫，向城市落下。"], align: "right", focus: [52, 48], scale: 1.08 },
-  { id: "youth-follows", image: 0, text: ["青年跟在後面。", "他不知道，墨裏藏着誰的記憶。"], align: "left", focus: [66, 60], scale: 1.13 },
-  { id: "estate-morning", image: 1, place: "葵涌 · 屋邨醒來", text: ["巴士駛過，鐵閘升起。", "城市在杯碟聲中醒來。"], align: "right", focus: [34, 48], scale: 1.03 },
-  { id: "milk-tea", image: 1, text: ["滾燙的茶湯，被反覆拉成一條線。", "高低之間，是老師傅留下的節奏。"], align: "left", focus: [55, 51], scale: 1.11, heritage: "港式奶茶製作技藝", interaction: "沖開茶香" },
-  { id: "tea-memory", image: 1, text: ["墨滴染上茶色。", "也記起第一種溫度。"], align: "center", focus: [68, 56], scale: 1.18 },
-  { id: "wood-door", image: 1, place: "舊工業區 · 午後", text: ["半掩的門後，", "機器聲裏混着淡淡木香。"], align: "right", focus: [72, 50], scale: 1.06 },
-  { id: "wood-carving", image: 1, text: ["每一刀，都不是把木頭移走。", "而是讓藏在裏面的形狀，被重新看見。"], align: "left", focus: [82, 52], scale: 1.2, heritage: "木雕刻技藝", interaction: "刻出木紋" },
-  { id: "estate-gathering", image: 2, place: "石籬、石蔭、安蔭 · 入夜", text: ["球場亮起燈。", "竹、布、香火與人，慢慢聚到屋邨中央。"], align: "right", focus: [34, 50], scale: 1.03, dark: true },
-  { id: "yulan", image: 2, text: ["青年遞上一張凳，也接過一盞燈。", "地方，因為有人願意相聚而存在。"], align: "left", focus: [52, 53], scale: 1.12, dark: true, heritage: "石籬、石蔭、安蔭盂蘭勝會", interaction: "點亮紙燈" },
-  { id: "neon-workshop", image: 2, place: "工廈 · 深夜", text: ["火焰靠近玻璃。", "一條直線，被慢慢屈成城市的光。"], align: "right", focus: [69, 43], scale: 1.17, dark: true },
-  { id: "neon", image: 2, text: ["起、承、轉、合。", "霓虹，也是寫在夜色上的一筆。"], align: "left", focus: [76, 54], scale: 1.23, dark: true, heritage: "霓虹光管製作及造型技藝", interaction: "讓墨線發光" },
-  { id: "road-to-sea", image: 3, place: "貨櫃碼頭 · 黎明以前", text: ["道路變闊。", "吊臂從海霧裏升起。"], align: "right", focus: [32, 48], scale: 1.02, dark: true },
-  { id: "containers", image: 3, text: ["貨櫃一格一格堆疊，", "像城市蓋給遠方的方印。"], align: "left", focus: [58, 55], scale: 1.1, dark: true },
-  { id: "crossing", image: 3, text: ["船、貨車、工人與潮水，", "沿着各自看不見的路前行。"], align: "center", focus: [76, 48], scale: 1.16, dark: true },
-  { id: "opera-arrives", image: 4, place: "青衣 · 戲棚", text: ["墨水渡過海面。", "一座戲棚，在風裏逐筆成形。"], align: "right", focus: [34, 48], scale: 1.03, dark: true },
-  { id: "chun-kwan", image: 4, text: ["有人描眉，有人試鑼。", "真君誕開台，台下的人一同抬頭。"], align: "left", focus: [56, 48], scale: 1.13, dark: true, heritage: "青衣真君誕", interaction: "讓戲棚開台" },
-  { id: "tin-hau", image: 4, text: ["布景換過，香案重整。", "同一座棚，又接住另一個願。"], align: "right", focus: [72, 49], scale: 1.2, dark: true, heritage: "青衣天后誕", interaction: "送出祝願" },
-  { id: "home", image: 5, place: "一盞家燈 · 夜深", text: ["青年回到一張暖着的飯桌。", "有人搓圓蓮蓉，有人拿出用過多年的木模。"], align: "left", focus: [35, 50], scale: 1.03 },
-  { id: "mooncake", image: 5, text: ["一按、一敲，花紋出現。", "每年回來的，不只是味道。"], align: "right", focus: [58, 51], scale: 1.12, heritage: "月餅製作技藝", interaction: "印下團圓" },
-  { id: "remember", image: 5, text: ["墨滴終於記起——", "自己來自無數雙手，無數次相聚。"], align: "center", focus: [74, 50], scale: 1.18 },
+  { id: "mountain", image: 0, place: "第一幕 · 山城入墨", text: ["霧穿過山脊，墨沿石縫落進城市。"], align: "left", lane: "upper", motion: "diagonal-left", tilt: -1.6, focus: [35, 42], scale: 1.05, interaction: "喚醒山脈" },
+  { id: "milk-tea", image: 1, place: "第二幕 · 葵涌早茶", text: ["滾燙茶湯被拉成一線，留下老師傅的節奏。"], align: "right", lane: "middle", motion: "from-right", tilt: 0.8, focus: [55, 51], scale: 1.13, heritage: "港式奶茶製作技藝", interaction: "沖開茶香" },
+  { id: "wood-carving", image: 1, place: "第三幕 · 木裏藏形", text: ["一刀一痕，讓藏在木裏的形狀重新現身。"], align: "left", lane: "lower", motion: "from-low", tilt: -0.7, focus: [80, 53], scale: 1.25, heritage: "木雕刻技藝", interaction: "刻出木紋" },
+  { id: "yulan", image: 2, place: "第四幕 · 屋邨燈聚", text: ["燈火聚到屋邨中央，地方因相聚而存在。"], align: "right", lane: "upper", motion: "from-high", tilt: 1.2, focus: [42, 48], scale: 1.08, dark: true, heritage: "石籬、石蔭、安蔭盂蘭勝會", interaction: "點亮紙燈" },
+  { id: "neon", image: 2, place: "第五幕 · 夜色成筆", text: ["火焰屈曲玻璃，夜色多了一筆城市的光。"], align: "left", lane: "middle", motion: "diagonal-right", tilt: -1.1, focus: [77, 51], scale: 1.25, dark: true, heritage: "霓虹光管製作及造型技藝", interaction: "讓墨線發光" },
+  { id: "harbour", image: 3, place: "第六幕 · 港口遠行", text: ["船、吊臂與潮水，沿看不見的路連起遠方。"], align: "center", lane: "lower", motion: "focus-in", tilt: 0.5, focus: [56, 49], scale: 1.15, dark: true, interaction: "推開海霧" },
+  { id: "chun-kwan", image: 4, place: "第七幕 · 戲棚開台", text: ["鑼聲一響，風、竹與人聚成一台戲。"], align: "right", lane: "middle", motion: "from-left", tilt: 1.3, focus: [53, 48], scale: 1.16, dark: true, heritage: "青衣真君誕", interaction: "讓戲棚開台" },
+  { id: "tin-hau", image: 4, place: "第八幕 · 海風載願", text: ["同一座棚接住另一個願，香火隨海風流動。"], align: "left", lane: "upper", motion: "from-right", tilt: -0.9, focus: [74, 49], scale: 1.25, dark: true, heritage: "青衣天后誕", interaction: "送出祝願" },
+  { id: "mooncake", image: 5, place: "第九幕 · 團圓留印", text: ["一按一敲，花紋與團圓每年重回手中。"], align: "center", lane: "lower", motion: "from-low", tilt: 0, focus: [58, 51], scale: 1.15, heritage: "月餅製作技藝", interaction: "印下團圓" },
 ];
 
 const cameraKeyframes: CameraKeyframe[] = [
-  { yaw: -8, pitch: 3, roll: -0.6, depth: -18 },
-  { yaw: -2, pitch: -2, roll: 0.3, depth: 18 },
-  { yaw: 8, pitch: 2, roll: 0.8, depth: 42 },
-  { yaw: -9, pitch: 2, roll: -0.7, depth: -12 },
-  { yaw: -1, pitch: -3, roll: 0.2, depth: 38 },
-  { yaw: 7, pitch: 3, roll: 0.9, depth: 66 },
-  { yaw: -5, pitch: -1, roll: -0.5, depth: 20 },
-  { yaw: 11, pitch: 2, roll: 0.8, depth: 72 },
-  { yaw: -10, pitch: 3, roll: -0.7, depth: -10 },
-  { yaw: -2, pitch: -3, roll: 0.4, depth: 44 },
-  { yaw: 7, pitch: 2, roll: 0.7, depth: 60 },
-  { yaw: 12, pitch: -2, roll: 1, depth: 82 },
-  { yaw: -11, pitch: 2, roll: -0.8, depth: -12 },
-  { yaw: -3, pitch: -3, roll: 0.2, depth: 34 },
-  { yaw: 8, pitch: 2, roll: 0.8, depth: 62 },
-  { yaw: -9, pitch: 3, roll: -0.8, depth: -8 },
-  { yaw: 0, pitch: -2, roll: 0.2, depth: 42 },
-  { yaw: 10, pitch: 2, roll: 0.8, depth: 74 },
-  { yaw: -8, pitch: 2, roll: -0.5, depth: -4 },
-  { yaw: -1, pitch: -3, roll: 0.3, depth: 46 },
-  { yaw: 9, pitch: 2, roll: 0.7, depth: 76 },
+  { yaw: -10, pitch: 5, roll: -0.7, depth: -8 },
+  { yaw: 9, pitch: -4, roll: 0.6, depth: 52 },
+  { yaw: -12, pitch: 3, roll: -0.8, depth: 88 },
+  { yaw: 8, pitch: -6, roll: 0.7, depth: 28 },
+  { yaw: -13, pitch: 2, roll: -0.9, depth: 74 },
+  { yaw: 11, pitch: 4, roll: 0.7, depth: 96 },
+  { yaw: -9, pitch: -6, roll: -0.8, depth: 34 },
+  { yaw: 13, pitch: 2, roll: 0.9, depth: 86 },
+  { yaw: -7, pitch: -3, roll: -0.5, depth: 44 },
 ];
 
 type AudioEngine = {
@@ -312,11 +291,9 @@ function InkReactor({ visible, pointerEnabled, holdProgress, burstKey, dark, ori
     let previous = { x: -100, y: -100 };
     let frame = 0;
     let seenBurst = burstRef.current;
-    let openingWash = -1;
-    let openingCentre = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
 
     const resize = () => {
-      const ratio = Math.min(window.devicePixelRatio || 1, 1.6);
+      const ratio = Math.min(window.devicePixelRatio || 1, 1.2);
       canvas.width = window.innerWidth * ratio;
       canvas.height = window.innerHeight * ratio;
       canvas.style.width = `${window.innerWidth}px`;
@@ -340,7 +317,7 @@ function InkReactor({ visible, pointerEnabled, holdProgress, burstKey, dark, ori
           tail: [],
         });
       }
-      if (particles.length > 520) particles.splice(0, particles.length - 520);
+      if (particles.length > 280) particles.splice(0, particles.length - 280);
     };
 
     const pointer = (event: globalThis.PointerEvent) => {
@@ -389,29 +366,6 @@ function InkReactor({ visible, pointerEnabled, holdProgress, burstKey, dark, ori
       const color = darkRef.current ? "226, 219, 202" : "7, 11, 9";
       context.globalCompositeOperation = "source-over";
 
-      if (openingWash >= 0) {
-        openingWash += 0.026;
-        const span = Math.hypot(window.innerWidth, window.innerHeight);
-        const radius = span * (0.035 + openingWash * 0.88);
-        const wash = context.createRadialGradient(openingCentre.x, openingCentre.y, radius * 0.06, openingCentre.x, openingCentre.y, radius);
-        wash.addColorStop(0, "rgba(4, 7, 5, 0.98)");
-        wash.addColorStop(0.76, "rgba(7, 10, 8, 0.94)");
-        wash.addColorStop(0.9, "rgba(12, 16, 13, 0.64)");
-        wash.addColorStop(1, "rgba(12, 16, 13, 0)");
-        context.fillStyle = wash;
-        context.beginPath();
-        for (let point = 0; point <= 72; point += 1) {
-          const angle = (point / 72) * Math.PI * 2;
-          const edge = 0.91 + Math.sin(angle * 5.3 + openingWash * 7) * 0.045 + Math.cos(angle * 11.7) * 0.035;
-          const x = openingCentre.x + Math.cos(angle) * radius * edge;
-          const y = openingCentre.y + Math.sin(angle) * radius * edge;
-          if (point === 0) context.moveTo(x, y); else context.lineTo(x, y);
-        }
-        context.closePath();
-        context.fill();
-        if (openingWash > 1.12) openingWash = -1;
-      }
-
       if (progressRef.current > 0.01) {
         const pressure = Math.max(1, Math.round(progressRef.current * 4));
         const centre = originRef.current || { x: window.innerWidth / 2, y: window.innerHeight - Math.max(75, window.innerHeight * 0.09) };
@@ -420,10 +374,6 @@ function InkReactor({ visible, pointerEnabled, holdProgress, burstKey, dark, ori
       if (burstRef.current !== seenBurst) {
         seenBurst = burstRef.current;
         const centre = originRef.current || { x: window.innerWidth / 2, y: window.innerHeight - Math.max(75, window.innerHeight * 0.09) };
-        if (originRef.current) {
-          openingCentre = centre;
-          openingWash = 0;
-        }
         spawn(centre.x, centre.y, originRef.current ? 9.4 : 7.2, originRef.current ? 15 : 8, originRef.current ? 360 : 210);
       }
 
@@ -466,10 +416,12 @@ function SceneEffect({ effect }: { effect: { id: string; key: number } | null })
   const styleFor = (index: number, extra: Record<string, string | number> = {}) => ({ "--i": index, ...extra } as CSSProperties);
   return (
     <div className={`scene-effect effect-${effect.id}`} key={effect.key} aria-hidden="true">
+      {effect.id === "mountain" && <><div className="ink-ridge" />{Array.from({ length: 7 }, (_, index) => <i className="ridge-mist" style={styleFor(index)} key={index} />)}</>}
       {effect.id === "milk-tea" && <><div className="tea-stream" />{Array.from({ length: 8 }, (_, index) => <i className="tea-steam" style={styleFor(index)} key={index} />)}</>}
       {effect.id === "wood-carving" && <><div className="carve-mark" />{Array.from({ length: 22 }, (_, index) => <i className="wood-chip" style={styleFor(index)} key={index} />)}</>}
       {effect.id === "yulan" && <>{Array.from({ length: 15 }, (_, index) => <i className="paper-lantern" style={styleFor(index, { "--x": `${6 + ((index * 37) % 88)}%` })} key={index} />)}</>}
       {effect.id === "neon" && <div className="neon-calligraphy"><i /><i /><i /></div>}
+      {effect.id === "harbour" && <><div className="harbour-seal" />{Array.from({ length: 6 }, (_, index) => <i className="harbour-tide" style={styleFor(index)} key={index} />)}</>}
       {effect.id === "chun-kwan" && <><div className="opera-curtain curtain-left" /><div className="opera-curtain curtain-right" /><div className="gong-wave"><i /><i /><i /></div></>}
       {effect.id === "tin-hau" && <>{Array.from({ length: 28 }, (_, index) => <i className="wish-spark" style={styleFor(index, { "--x": `${8 + ((index * 29) % 84)}%` })} key={index} />)}</>}
       {effect.id === "mooncake" && <div className="moon-stamp">{Array.from({ length: 8 }, (_, index) => <i style={styleFor(index)} key={index} />)}</div>}
@@ -617,9 +569,10 @@ export default function Home() {
   }, [activeBeat]);
 
   useEffect(() => {
-    setHoldProgress(0);
     if (holdFrame.current) window.cancelAnimationFrame(holdFrame.current);
     holdFrame.current = null;
+    const frame = window.requestAnimationFrame(() => setHoldProgress(0));
+    return () => window.cancelAnimationFrame(frame);
   }, [activeBeat]);
 
   useEffect(() => () => {
@@ -665,7 +618,7 @@ export default function Home() {
     if (holdFrame.current) window.cancelAnimationFrame(holdFrame.current);
     holdFrame.current = null;
     if (!revealed.has(current.id)) setHoldProgress(0);
-  }, [current?.id, revealed]);
+  }, [current.id, revealed]);
 
   const handlePointerDown = (event: ReactPointerEvent<HTMLElement>) => {
     if (!activeInteraction) return;
@@ -802,7 +755,7 @@ export default function Home() {
         </Suspense>
       )}
 
-      <SceneEffect effect={sceneEffect?.id === "milk-tea" ? null : sceneEffect} />
+      <SceneEffect effect={sceneEffect} />
 
       {activeInteraction && (
         <button
@@ -833,9 +786,11 @@ export default function Home() {
       <section className="scroll-story" ref={storyRef} aria-label="墨脈葵青故事">
         {beats.map((beat, index) => (
           <article
-            className={`story-beat align-${beat.align}${beat.dark ? " text-light" : ""}${activeBeat === index ? " is-current" : ""}`}
+            className={`story-beat align-${beat.align} lane-${beat.lane}${beat.dark ? " text-light" : ""}${activeBeat === index ? " is-current" : ""}`}
+            data-copy-motion={beat.motion}
             data-beat={index}
             data-story-beat
+            style={{ "--copy-angle": `${beat.tilt}deg` } as CSSProperties}
             key={beat.id}
           >
             <div className="beat-copy">
