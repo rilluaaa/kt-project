@@ -43,15 +43,15 @@ const sceneImages = [
 ].map(assetUrl);
 
 const beats: Beat[] = [
-  { id: "mountain", image: 0, place: "第一幕 · 山城入墨", text: ["霧穿過山脊，墨沿石縫落進城市。"], align: "left", lane: "upper", motion: "diagonal-left", tilt: -1.6, focus: [35, 42], scale: 1.05, interaction: "喚醒山脈" },
-  { id: "milk-tea", image: 1, place: "第二幕 · 葵涌早茶", text: ["滾燙茶湯被拉成一線，留下老師傅的節奏。"], align: "right", lane: "middle", motion: "from-right", tilt: 0.8, focus: [55, 51], scale: 1.13, heritage: "港式奶茶製作技藝", interaction: "沖開茶香" },
-  { id: "wood-carving", image: 1, place: "第三幕 · 木裏藏形", text: ["一刀一痕，讓藏在木裏的形狀重新現身。"], align: "left", lane: "lower", motion: "from-low", tilt: -0.7, focus: [80, 53], scale: 1.25, heritage: "木雕刻技藝", interaction: "刻出木紋" },
-  { id: "yulan", image: 2, place: "第四幕 · 屋邨燈聚", text: ["燈火聚到屋邨中央，地方因相聚而存在。"], align: "right", lane: "upper", motion: "from-high", tilt: 1.2, focus: [42, 48], scale: 1.08, dark: true, heritage: "石籬、石蔭、安蔭盂蘭勝會", interaction: "點亮紙燈" },
-  { id: "neon", image: 2, place: "第五幕 · 夜色成筆", text: ["火焰屈曲玻璃，夜色多了一筆城市的光。"], align: "left", lane: "middle", motion: "diagonal-right", tilt: -1.1, focus: [77, 51], scale: 1.25, dark: true, heritage: "霓虹光管製作及造型技藝", interaction: "讓墨線發光" },
-  { id: "harbour", image: 3, place: "第六幕 · 港口遠行", text: ["船、吊臂與潮水，沿看不見的路連起遠方。"], align: "center", lane: "lower", motion: "focus-in", tilt: 0.5, focus: [56, 49], scale: 1.15, dark: true, interaction: "推開海霧" },
-  { id: "chun-kwan", image: 4, place: "第七幕 · 戲棚開台", text: ["鑼聲一響，風、竹與人聚成一台戲。"], align: "right", lane: "middle", motion: "from-left", tilt: 1.3, focus: [53, 48], scale: 1.16, dark: true, heritage: "青衣真君誕", interaction: "讓戲棚開台" },
-  { id: "tin-hau", image: 4, place: "第八幕 · 海風載願", text: ["同一座棚接住另一個願，香火隨海風流動。"], align: "left", lane: "upper", motion: "from-right", tilt: -0.9, focus: [74, 49], scale: 1.25, dark: true, heritage: "青衣天后誕", interaction: "送出祝願" },
-  { id: "mooncake", image: 5, place: "第九幕 · 團圓留印", text: ["一按一敲，花紋與團圓每年重回手中。"], align: "center", lane: "lower", motion: "from-low", tilt: 0, focus: [58, 51], scale: 1.15, heritage: "月餅製作技藝", interaction: "印下團圓" },
+  { id: "mountain", image: 0, place: "山城入墨", text: ["霧穿過山脊，墨沿石縫落進城市。"], align: "left", lane: "upper", motion: "diagonal-left", tilt: -1.6, focus: [35, 42], scale: 1.05, interaction: "喚醒山脈" },
+  { id: "milk-tea", image: 1, place: "葵涌早茶", text: ["滾燙茶湯被拉成一線，留下老師傅的節奏。"], align: "right", lane: "middle", motion: "from-right", tilt: 0.8, focus: [55, 51], scale: 1.13, heritage: "港式奶茶製作技藝", interaction: "沖開茶香" },
+  { id: "wood-carving", image: 1, place: "木裏藏形", text: ["一刀一痕，讓藏在木裏的形狀重新現身。"], align: "left", lane: "lower", motion: "from-low", tilt: -0.7, focus: [80, 53], scale: 1.25, heritage: "木雕刻技藝", interaction: "刻出木紋" },
+  { id: "yulan", image: 2, place: "屋邨燈聚", text: ["燈火聚到屋邨中央，地方因相聚而存在。"], align: "right", lane: "upper", motion: "from-high", tilt: 1.2, focus: [42, 48], scale: 1.08, dark: true, heritage: "石籬、石蔭、安蔭盂蘭勝會", interaction: "點亮紙燈" },
+  { id: "neon", image: 2, place: "夜色成筆", text: ["火焰屈曲玻璃，夜色多了一筆城市的光。"], align: "left", lane: "middle", motion: "diagonal-right", tilt: -1.1, focus: [77, 51], scale: 1.25, dark: true, heritage: "霓虹光管製作及造型技藝", interaction: "讓墨線發光" },
+  { id: "harbour", image: 3, place: "港口遠行", text: ["船、吊臂與潮水，沿看不見的路連起遠方。"], align: "center", lane: "lower", motion: "focus-in", tilt: 0.5, focus: [56, 49], scale: 1.15, dark: true, interaction: "推開海霧" },
+  { id: "chun-kwan", image: 4, place: "戲棚開台", text: ["鑼聲一響，風、竹與人聚成一台戲。"], align: "right", lane: "middle", motion: "from-left", tilt: 1.3, focus: [53, 48], scale: 1.16, dark: true, heritage: "青衣真君誕", interaction: "讓戲棚開台" },
+  { id: "tin-hau", image: 4, place: "海風載願", text: ["同一座棚接住另一個願，香火隨海風流動。"], align: "left", lane: "upper", motion: "from-right", tilt: -0.9, focus: [74, 49], scale: 1.25, dark: true, heritage: "青衣天后誕", interaction: "送出祝願" },
+  { id: "mooncake", image: 5, place: "團圓留印", text: ["一按一敲，花紋與團圓每年重回手中。"], align: "center", lane: "lower", motion: "from-low", tilt: 0, focus: [58, 51], scale: 1.15, heritage: "月餅製作技藝", interaction: "印下團圓" },
 ];
 
 const cameraKeyframes: CameraKeyframe[] = [
@@ -546,6 +546,7 @@ export default function Home() {
       experience?.style.setProperty("--ink-x", `${event.clientX}px`);
       experience?.style.setProperty("--ink-y", `${event.clientY}px`);
     };
+    const enter = (event: globalThis.PointerEvent) => move(event);
     const reset = () => {
       visual.style.setProperty("--pointer-yaw", "0deg");
       visual.style.setProperty("--pointer-pitch", "0deg");
@@ -553,9 +554,11 @@ export default function Home() {
       visual.style.setProperty("--pointer-y", "0vh");
     };
     window.addEventListener("pointermove", move, { passive: true });
+    window.addEventListener("pointerenter", enter, { passive: true });
     document.documentElement.addEventListener("mouseleave", reset);
     return () => {
       window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerenter", enter);
       document.documentElement.removeEventListener("mouseleave", reset);
     };
   }, [started]);
@@ -584,18 +587,19 @@ export default function Home() {
   }, []);
 
   const current = beats[Math.min(activeBeat, beats.length - 1)];
-  const activeInteraction = current?.interaction && !revealed.has(current.id) ? current.interaction : null;
+  const activeInteraction = current?.interaction ?? null;
 
   const completeHold = useCallback(() => {
-    if (!current?.interaction || revealed.has(current.id)) return;
+    if (!current?.interaction) return;
     const effectKey = Date.now();
     setRevealed((previous) => new Set(previous).add(current.id));
     setHoldProgress(100);
     setBlooming(true);
     setSceneEffect({ id: current.id, key: effectKey });
+    window.setTimeout(() => setHoldProgress(0), 520);
     window.setTimeout(() => setBlooming(false), 1900);
     window.setTimeout(() => setSceneEffect((active) => active?.key === effectKey ? null : active), 3100);
-  }, [current, revealed]);
+  }, [current]);
 
   const beginHold = useCallback(() => {
     if (!activeInteraction || holdFrame.current) return;
@@ -617,8 +621,8 @@ export default function Home() {
   const endHold = useCallback(() => {
     if (holdFrame.current) window.cancelAnimationFrame(holdFrame.current);
     holdFrame.current = null;
-    if (!revealed.has(current.id)) setHoldProgress(0);
-  }, [current.id, revealed]);
+    setHoldProgress(0);
+  }, []);
 
   const handlePointerDown = (event: ReactPointerEvent<HTMLElement>) => {
     if (!activeInteraction) return;
@@ -683,7 +687,7 @@ export default function Home() {
   return (
     <main
       className={`experience${started ? " is-started" : ""}${current?.dark ? " is-dark" : ""}${blooming ? " is-blooming" : ""}${openingBloom ? " is-opening-bloom" : ""}${cursorInteraction ? " has-webgl-cursor-ink" : ""}${reducedMotion ? " reduce-motion" : ""}`}
-      style={{ "--loader-scene-image": `url(${assetUrl("/ink/scene-01-mountain-city.webp")})` } as CSSProperties}
+      style={{ "--loader-scene-image": `url(${assetUrl("/ink/scene-01-mountain-city.webp")})`, "--ink-x": "50vw", "--ink-y": "50vh" } as CSSProperties}
       ref={experienceRef}
       onPointerDown={handlePointerDown}
       onPointerUp={endHold}
@@ -786,7 +790,7 @@ export default function Home() {
       <section className="scroll-story" ref={storyRef} aria-label="墨脈葵青故事">
         {beats.map((beat, index) => (
           <article
-            className={`story-beat align-${beat.align} lane-${beat.lane}${beat.dark ? " text-light" : ""}${activeBeat === index ? " is-current" : ""}`}
+            className={`story-beat align-${beat.align} lane-${beat.lane}${beat.dark ? " text-light" : ""}${activeBeat === index && motion.amount < 0.68 ? " is-current" : ""}`}
             data-copy-motion={beat.motion}
             data-beat={index}
             data-story-beat
