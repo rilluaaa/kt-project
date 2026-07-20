@@ -561,16 +561,22 @@ html.scroll-locked body {
   position: relative;
   z-index: 6;
   display: grid;
-  min-height: 118vh;
+  min-height: 130vh;
+  margin-top: -16vh;
   overflow: hidden;
   grid-template-columns: minmax(0, 1fr) minmax(23rem, .88fr);
   grid-template-rows: 1fr auto;
   align-items: center;
   gap: clamp(3rem, 8vw, 10rem);
-  padding: clamp(8rem, 15vh, 12rem) clamp(2rem, 7vw, 8rem) clamp(3rem, 7vh, 5rem);
-  background:
-    linear-gradient(132deg, rgba(8, 42, 28, .98), rgba(24, 91, 62, .97) 48%, rgba(10, 53, 36, .99)),
-    #103e2c;
+  padding: clamp(15rem, 31vh, 22rem) clamp(2rem, 7vw, 8rem) clamp(3rem, 7vh, 5rem);
+  background: linear-gradient(
+    180deg,
+    rgba(16, 62, 44, 0) 0,
+    rgba(13, 60, 41, .12) 7vh,
+    rgba(14, 65, 44, .7) 20vh,
+    #15523a 35vh,
+    #103e2c 100%
+  );
   color: #f3f0e5;
   isolation: isolate;
 }
@@ -578,13 +584,19 @@ html.scroll-locked body {
 .explore-page::before {
   position: absolute;
   z-index: 0;
-  top: -13vh;
-  right: -4%;
-  left: -4%;
-  height: 20vh;
-  background: linear-gradient(180deg, transparent, rgba(13, 57, 39, .95) 68%, #103e2c);
+  top: -11vh;
+  right: -9%;
+  left: -9%;
+  height: 44vh;
+  background:
+    radial-gradient(ellipse at 15% 62%, rgba(11, 62, 40, .82), transparent 31%),
+    radial-gradient(ellipse at 52% 46%, rgba(25, 91, 60, .72), transparent 39%),
+    radial-gradient(ellipse at 87% 69%, rgba(8, 49, 32, .88), transparent 34%);
   content: "";
-  filter: blur(10px);
+  filter: blur(20px);
+  opacity: .9;
+  -webkit-mask-image: linear-gradient(180deg, transparent, #000 28%, #000 76%, transparent);
+  mask-image: linear-gradient(180deg, transparent, #000 28%, #000 76%, transparent);
 }
 
 .explore-wash {
@@ -741,7 +753,7 @@ html.scroll-locked body {
   .story-scene { min-height: 520vh; }
   .finale-copy { margin-bottom: 14vh; }
   .finale-copy h2 { font-size: clamp(2.55rem, 12vw, 4.8rem); }
-  .explore-page { min-height: 130vh; padding-top: 8rem; }
+  .explore-page { min-height: 142vh; padding-top: 17rem; }
   .explore-intro h2 { font-size: clamp(3.25rem, 16vw, 5.4rem); }
   .explore-button { width: 100%; }
 }

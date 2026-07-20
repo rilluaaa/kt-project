@@ -57,8 +57,10 @@ test("uses blob seeking, a brief opening beat and masked film transitions", asyn
   const ink = await readFile(new URL("../app/ThreeFilmInk.tsx", import.meta.url), "utf8");
   const css = await readFile(new URL("../app/video.css", import.meta.url), "utf8");
   assert.match(source, /function directedTimeline/);
-  assert.match(source, /const entryFrame = Math\.max\(0, motionStart - 0\.012\)/);
-  assert.match(source, /const startVelocity = 0\.68/);
+  assert.match(source, /const introScrollBand = 0\.04/);
+  assert.match(source, /return lerp\(0, motionStart, smooth\(p \/ introScrollBand\)\)/);
+  assert.match(source, /const startVelocity = 0\.24/);
+  assert.match(source, /smoothedVideoTime\.current\[index\] = 0/);
   assert.doesNotMatch(source, /p <= 0\.032/);
   assert.match(source, /const motionStarts = \[0\.293, 0\.205, 0\.462, 0\.294, 0\.198\]/);
   assert.match(source, /response\.blob\(\)/);
@@ -86,9 +88,11 @@ test("keeps captions monochrome, removes side labels and holds one seamless fina
   assert.match(page, /caption\.scene\.id === "street" \? 0 : 1/);
   assert.match(page, /className="explore-page"/);
   assert.match(page, /className="explore-button"/);
+  assert.match(page, /熱熾葵青，[\s\S]*仍在每次相聚之間亮起。/);
   assert.match(css, /\.video-experience \.heritage \{[\s\S]*?color: #050807/);
   assert.match(css, /\.finale-film-image \{[\s\S]*?object-fit: cover/);
   assert.match(css, /\.explore-page \{[\s\S]*?background:/);
+  assert.match(css, /rgba\(16, 62, 44, 0\)/);
   assert.match(css, /\.explore-button \{[\s\S]*?background: #f5f2e8;[\s\S]*?color: #06100b/);
   assert.doesNotMatch(css, /\.finale-backdrop/);
 });

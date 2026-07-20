@@ -150,13 +150,17 @@ const motionStarts = [0.293, 0.205, 0.462, 0.294, 0.198];
 function directedTimeline(progress: number, sceneIndex: number) {
   const p = clamp(progress);
   const motionStart = motionStarts[sceneIndex] ?? 0.2;
-  const entryFrame = Math.max(0, motionStart - 0.012);
-  const startVelocity = 0.68;
+  const introScrollBand = 0.04;
+  if (p <= introScrollBand) {
+    return lerp(0, motionStart, smooth(p / introScrollBand));
+  }
+  const movingProgress = clamp((p - introScrollBand) / (1 - introScrollBand));
+  const startVelocity = 0.24;
   const endVelocity = 0.58;
-  const curved = (-2 * p ** 3 + 3 * p ** 2)
-    + (p ** 3 - 2 * p ** 2 + p) * startVelocity
-    + (p ** 3 - p ** 2) * endVelocity;
-  return lerp(entryFrame, 0.995, curved);
+  const curved = (-2 * movingProgress ** 3 + 3 * movingProgress ** 2)
+    + (movingProgress ** 3 - 2 * movingProgress ** 2 + movingProgress) * startVelocity
+    + (movingProgress ** 3 - movingProgress ** 2) * endVelocity;
+  return lerp(motionStart, 0.995, curved);
 }
 
 export default function VideoHome() {
@@ -205,7 +209,7 @@ export default function VideoHome() {
 
   const markVideoReady = useCallback((index: number) => {
     if (loadedVideos.current.has(index)) return;
-    smoothedVideoTime.current[index] = Math.max(0, motionStarts[index] - 0.012);
+    smoothedVideoTime.current[index] = 0;
     loadedVideos.current.add(index);
     refreshLoading();
     if (loadedVideos.current.size === scenes.length) setAssetsReady(true);
@@ -213,11 +217,6 @@ export default function VideoHome() {
 
   const warmVideo = useCallback((index: number, video: HTMLVideoElement) => {
     if (loadedVideos.current.has(index) || !Number.isFinite(video.duration) || video.duration <= 0) return;
-    const entry = video.duration * Math.max(0, motionStarts[index] - 0.012);
-    if (Math.abs(video.currentTime - entry) > 0.025) {
-      try { video.currentTime = entry; } catch { /* Metadata can settle one event later. */ }
-      return;
-    }
     markVideoReady(index);
   }, [markVideoReady]);
 
@@ -673,7 +672,7 @@ export default function VideoHome() {
             <div className="explore-wash" aria-hidden="true"><i /><i /><i /></div>
             <div className="explore-intro">
               <p>山、城、海與人情，仍有更多路徑等待展開。</p>
-              <h2 id="explore-title">沿着墨脈，<br />再看葵青。</h2>
+              <h2 id="explore-title">熱熾葵青，<br />仍在每次相聚之間亮起。</h2>
               <button
                 className="explore-button"
                 onClick={() => sectionRefs.current[0]?.scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth" })}
