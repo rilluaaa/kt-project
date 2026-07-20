@@ -94,8 +94,11 @@ html.scroll-locked body { overflow: hidden; overscroll-behavior: none; }
 }
 
 .video-experience .opening-title > small {
+  margin-top: 2.35rem;
   color: rgba(11, 21, 16, .58);
+  font-size: .66rem;
   letter-spacing: .18em;
+  filter: none;
 }
 
 .video-experience.is-opening .opening-title {

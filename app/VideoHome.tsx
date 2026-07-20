@@ -426,7 +426,7 @@ export default function VideoHome() {
           <div className="opening-title">
             <p>一滴墨，穿過山城與燈火</p>
             <h1>熱熾葵青</h1>
-            <button className="journey-start" onClick={startJourney}><span>開始旅程</span><i aria-hidden="true" /></button>
+            <button className="journey-start" onClick={startJourney}><span>開始旅程</span></button>
             <small>建議開啟聲音 · 滾輪控制鏡頭</small>
           </div>
         )}
