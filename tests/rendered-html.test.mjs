@@ -47,22 +47,35 @@ test("ships five native-quality short-GOP scroll films with exact posters", asyn
   assert.doesNotMatch(html, /ThreeMountainStage|ink-scroll-world\.glb/);
 });
 
-test("uses blob seeking, a long opening-frame dwell and masked film transitions", async () => {
+test("uses blob seeking, a brief opening beat and masked film transitions", async () => {
   const source = await readFile(new URL("../app/VideoHome.tsx", import.meta.url), "utf8");
   const ink = await readFile(new URL("../app/ThreeFilmInk.tsx", import.meta.url), "utf8");
   const css = await readFile(new URL("../app/video.css", import.meta.url), "utf8");
   assert.match(source, /function directedTimeline/);
-  assert.match(source, /p <= 0\.3/);
+  assert.match(source, /p <= 0\.032/);
+  assert.match(source, /const motionStarts = \[0\.293, 0\.205, 0\.462, 0\.294, 0\.198\]/);
   assert.match(source, /response\.blob\(\)/);
   assert.match(source, /URL\.createObjectURL/);
   assert.match(source, /!video\.seeking/);
   assert.match(source, /currentTime = desired/);
   assert.match(source, /transition=\{transition\}/);
   assert.match(ink, /transitionPeak = clamp\(uTransition/);
+  assert.match(ink, /holdPresence = smoothstep/);
   assert.match(css, /min-height: 560vh/);
   assert.match(css, /\.transition-occluder/);
-  assert.match(css, /object-fit: contain/);
+  assert.match(css, /object-fit: cover/);
   assert.doesNotMatch(css, /\.watermark-veil/);
+});
+
+test("keeps captions monochrome, removes side labels and holds one seamless finale plane", async () => {
+  const page = await readFile(new URL("../app/VideoHome.tsx", import.meta.url), "utf8");
+  const css = await readFile(new URL("../app/video.css", import.meta.url), "utf8");
+  assert.doesNotMatch(page, /className="place"/);
+  assert.match(page, /film-scene--final/);
+  assert.match(page, /finaleFilmRef/);
+  assert.match(css, /\.video-experience \.heritage \{[\s\S]*?color: #050807/);
+  assert.match(css, /\.finale-film-image \{[\s\S]*?object-fit: cover/);
+  assert.doesNotMatch(css, /\.finale-backdrop/);
 });
 
 test("long press offers three replayable WebGL effects based on the live film frame", async () => {

@@ -186,7 +186,7 @@ html.scroll-locked body {
   width: 100%;
   height: 100%;
   max-width: none;
-  object-fit: contain;
+  object-fit: cover;
   object-position: center;
   filter: contrast(1.018) saturate(1.025) brightness(1.012);
   transform: translateZ(0);
@@ -202,6 +202,14 @@ html.scroll-locked body {
     linear-gradient(180deg, rgba(238, 233, 220, .015), transparent 67%, rgba(5, 18, 11, .08));
   mix-blend-mode: soft-light;
   opacity: .74;
+}
+
+.film-scene--final { --scene-opacity: 0; }
+
+.finale-film-image {
+  z-index: 1;
+  object-fit: cover;
+  object-position: center;
 }
 
 .depth-fog {
@@ -303,13 +311,13 @@ html.scroll-locked body {
   width: max-content;
   max-width: 88vw;
   min-height: 0;
-  grid-template-columns: auto minmax(0, auto);
+  grid-template-columns: minmax(0, auto);
   align-items: baseline;
   gap: clamp(.7rem, 1.45vw, 1.35rem);
   padding: .25rem 0 .54rem;
   background: transparent;
-  color: #07140d;
-  text-shadow: 0 1px .25rem rgba(238, 233, 220, .94), 0 0 1.25rem rgba(238, 233, 220, .97), 0 0 2.8rem rgba(238, 233, 220, .76);
+  color: rgba(250, 247, 236, .99);
+  text-shadow: 0 1px .3rem rgba(3, 10, 6, .96), 0 0 1.4rem rgba(3, 10, 6, .92), 0 0 3rem rgba(3, 10, 6, .7);
   opacity: 0;
   filter: blur(10px);
   transform-style: preserve-3d;
@@ -322,7 +330,7 @@ html.scroll-locked body {
   bottom: 0;
   width: clamp(2.8rem, 6vw, 5.5rem);
   height: 1px;
-  background: linear-gradient(90deg, var(--green-bright), var(--amber), transparent);
+  background: linear-gradient(90deg, rgba(250, 247, 236, .92), transparent);
   content: "";
   opacity: .78;
 }
@@ -344,7 +352,7 @@ html.scroll-locked body {
   transform-origin: right center;
 }
 .caption-far-right::after,
-.caption-high-right::after { right: auto; left: 0; background: linear-gradient(90deg, var(--amber), var(--green-bright), transparent); }
+.caption-high-right::after { right: auto; left: 0; background: linear-gradient(90deg, rgba(250, 247, 236, .92), transparent); }
 .caption-far-right.is-visible { transform: translate3d(0, 0, 0) rotateY(2deg) scale(1); }
 
 .caption-high-left {
@@ -383,13 +391,6 @@ html.scroll-locked body {
 }
 .caption-low-left.is-visible { transform: translate3d(0, 0, 0) rotateX(-2deg) scale(1); }
 
-.video-experience .place {
-  color: var(--green-bright);
-  font-size: .67rem;
-  letter-spacing: .22em;
-  white-space: nowrap;
-}
-
 .caption-line {
   margin: 0;
   font-family: var(--serif);
@@ -400,13 +401,13 @@ html.scroll-locked body {
 }
 
 .video-experience .heritage {
-  grid-column: 2;
-  margin: 0;
-  color: var(--amber-pale);
+  grid-column: 1;
+  margin: .12rem 0 0;
+  color: #050807;
   font-size: .58rem;
   letter-spacing: .12em;
   white-space: nowrap;
-  text-shadow: 0 1px .4rem rgba(3, 10, 6, .95), 0 0 1rem rgba(3, 10, 6, .82);
+  text-shadow: 0 0 .35rem rgba(250, 247, 236, 1), 0 0 1rem rgba(250, 247, 236, .96), 0 0 2rem rgba(250, 247, 236, .84);
 }
 
 /* A wet irregular pool follows the pointer. The WebGL layer adds capillary
@@ -501,9 +502,9 @@ html.scroll-locked body {
 .finale {
   position: relative;
   z-index: 30;
-  min-height: 225vh;
+  min-height: 260vh;
   overflow: clip;
-  background: #102219;
+  background: transparent;
   color: var(--paper);
 }
 
@@ -515,25 +516,7 @@ html.scroll-locked body {
   height: 100vh;
   overflow: hidden;
   place-items: center;
-  background: #12271d;
-}
-
-.finale-backdrop {
-  position: absolute;
-  inset: -8%;
-  background: url("/media/kt3.6-colour.png") center/cover no-repeat;
-  filter: blur(28px) brightness(.48) saturate(.86);
-  opacity: .9;
-  transform: scale(1.13);
-}
-
-.finale-visual > img {
-  position: absolute;
-  z-index: 1;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
+  background: transparent;
 }
 
 .finale-grade {
@@ -654,9 +637,8 @@ html.scroll-locked body {
   .video-experience .opening-title > small { margin-top: 2.7rem; font-size: .66rem; }
   .video-experience .journey-start { width: 7.3rem; height: 7.3rem; }
   .film-plane { inset: 0; }
-  .scene-film { object-fit: contain; }
+  .scene-film { object-fit: cover; }
   .caption-line { font-size: clamp(1rem, 5vw, 1.3rem); }
-  .video-experience .place { font-size: .59rem; }
   .story-scene { min-height: 520vh; }
   .finale-copy { margin-bottom: 14vh; }
   .finale-copy h2 { font-size: clamp(2.55rem, 12vw, 4.8rem); }

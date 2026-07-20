@@ -141,8 +141,9 @@ const fragmentShader = /* glsl */ `
     colour = mix(colour, amber, sceneWarmth * (wetEdge * 0.23 + burstFront * 0.1));
     colour = mix(colour, vec3(0.018, 0.068, 0.044), wetEdge * 0.38 + burstFront * 0.22);
 
-    float alpha = holdInk * (0.27 + uHold * 0.48 + sediment * 0.13)
-      + wetEdge * 0.2 + pigmentRing * 0.2 + capillary * 0.34;
+    float holdPresence = smoothstep(0.012, 0.075, uHold);
+    float alpha = (holdInk * (0.27 + uHold * 0.48 + sediment * 0.13)
+      + wetEdge * 0.2 + pigmentRing * 0.2 + capillary * 0.34) * holdPresence;
     alpha = max(alpha, burst * burstLife * (0.78 + granulation * 0.12));
     alpha = max(alpha, burstFront * 0.32 + satellite * burstLife * 0.72);
     alpha = max(alpha, transitionInk * 0.9 + fog * 0.24);

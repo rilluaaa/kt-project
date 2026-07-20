@@ -143,13 +143,17 @@ function buildSoundtrack(): AudioEngine | null {
   };
 }
 
-/* Nearly one third of every chapter is an intentional still-image hold. The
-   remaining distance then performs the authored ten-second camera move. */
-function directedTimeline(progress: number) {
+/* Give each chapter one short beat on its source painting, then jump across
+   the still lead-in baked into each film so movement answers the next scroll. */
+const motionStarts = [0.293, 0.205, 0.462, 0.294, 0.198];
+
+function directedTimeline(progress: number, sceneIndex: number) {
   const p = clamp(progress);
-  if (p <= 0.3) return lerp(0, 0.012, smooth(p / 0.3));
-  if (p <= 0.86) return lerp(0.012, 0.925, smooth((p - 0.3) / 0.56));
-  return lerp(0.925, 0.995, smooth((p - 0.86) / 0.14));
+  const motionStart = motionStarts[sceneIndex] ?? 0.2;
+  if (p <= 0.032) return lerp(0, 0.003, smooth(p / 0.032));
+  if (p <= 0.085) return lerp(0.003, motionStart + 0.012, smooth((p - 0.032) / 0.053));
+  if (p <= 0.88) return lerp(motionStart + 0.012, 0.94, smooth((p - 0.085) / 0.795));
+  return lerp(0.94, 0.995, smooth((p - 0.88) / 0.12));
 }
 
 export default function VideoHome() {
@@ -177,6 +181,7 @@ export default function VideoHome() {
   const storyRef = useRef<HTMLElement>(null);
   const sectionRefs = useRef<Array<HTMLElement | null>>([]);
   const filmSceneRefs = useRef<Array<HTMLDivElement | null>>([]);
+  const finaleFilmRef = useRef<HTMLDivElement>(null);
   const videoRefs = useRef<Array<HTMLVideoElement | null>>([]);
   const loadedVideos = useRef(new Set<number>());
   const audioRef = useRef<AudioEngine | null>(null);
@@ -318,7 +323,7 @@ export default function VideoHome() {
       });
       current = Math.min(scenes.length - 1, current);
       const currentProgress = progress[current] ?? 0;
-      const blend = current < scenes.length - 1 ? range(currentProgress, 0.875, 1) : 0;
+      const blend = range(currentProgress, 0.875, 1);
       const transitionPeak = Math.sin(blend * Math.PI);
 
       if (activeSceneRef.current !== current) {
@@ -332,7 +337,11 @@ export default function VideoHome() {
 
       filmSceneRefs.current.forEach((element, index) => {
         if (!element) return;
-        const opacity = index === current ? 1 - blend : index === current + 1 ? blend : 0;
+        const opacity = index === current
+          ? 1 - blend
+          : current < scenes.length - 1 && index === current + 1
+            ? blend
+            : 0;
         const p = progress[index] ?? 0;
         const eased = smooth(p);
         const [fromX, fromY, toX, toY] = drift[index];
@@ -341,6 +350,10 @@ export default function VideoHome() {
         element.style.setProperty("--scene-y", `${lerp(fromY, toY, eased)}vh`);
         element.style.setProperty("--scene-scale", `${lerp(1.012, 1.052, range(p, 0.28, 0.86))}`);
       });
+      finaleFilmRef.current?.style.setProperty(
+        "--scene-opacity",
+        `${current === scenes.length - 1 ? blend : 0}`,
+      );
       stageRef.current?.style.setProperty("--transition-peak", `${transitionPeak}`);
 
       if (now - lastVideoSeek > 18 && effectScene === null) {
@@ -349,7 +362,7 @@ export default function VideoHome() {
         sought.forEach((index) => {
           const video = videoRefs.current[index];
           if (!video || !Number.isFinite(video.duration) || video.duration <= 0) return;
-          const mapped = directedTimeline(progress[index] ?? 0);
+          const mapped = directedTimeline(progress[index] ?? 0, index);
           smoothedVideoTime.current[index] += (mapped - smoothedVideoTime.current[index]) * (reducedMotion ? 1 : 0.2);
           const desired = video.duration * smoothedVideoTime.current[index];
           if (!video.seeking && Math.abs(video.currentTime - desired) > 0.018) {
@@ -552,6 +565,19 @@ export default function VideoHome() {
             </div>
           </div>
         ))}
+        <div className="film-scene film-scene--final" ref={finaleFilmRef}>
+          <div className="film-plane">
+            <Image
+              className="finale-film-image"
+              src={assetUrl("/media/kt3.6-colour.png")}
+              alt=""
+              fill
+              unoptimized
+              sizes="100vw"
+            />
+            <div className="film-grade" />
+          </div>
+        </div>
         <div className="depth-fog depth-fog--far" />
         <div className="depth-fog depth-fog--near" />
         <div className="transition-occluder"><i /><i /><i /><i /></div>
@@ -576,7 +602,6 @@ export default function VideoHome() {
             && sceneProgress <= caption.end;
           return (
             <div className={`cinematic-caption caption-${caption.direction}${visible ? " is-visible" : ""}`} key={`${caption.scene.id}-${caption.lineIndex}`}>
-              <p className="place">{caption.scene.place}</p>
               <p className="caption-line">{caption.text}</p>
               {caption.scene.heritage && caption.lineIndex === 1 && <p className="heritage">{caption.scene.heritage}</p>}
             </div>
@@ -629,14 +654,6 @@ export default function VideoHome() {
         ))}
         <section className="finale" aria-label="相聚葵青">
           <div className="finale-visual">
-            <div className="finale-backdrop" aria-hidden="true" />
-            <Image
-              src={assetUrl("/media/kt3.6-colour.png")}
-              alt="家人圍桌、竹棚戲台與葵青海港交織的彩墨長卷"
-              fill
-              unoptimized
-              sizes="100vw"
-            />
             <div className="finale-grade" />
             <div className="finale-copy">
               <p>一城燈火，終於回到一張飯桌。</p>
