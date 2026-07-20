@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import "./video.css";
 
 export const metadata: Metadata = {
-  title: "墨脈葵青｜一滴墨，流過山城與海港",
-  description: "跟隨一滴有記憶的墨，由山脊走過屋邨、工業區、海港與青衣，重新遇見葵青的人與非物質文化遺產。",
+  title: "熱熾葵青｜一滴墨，穿過山城與燈火",
+  description: "以滾輪導演鏡頭，跟隨墨色由山城進入葵涌街巷，在綠霧與暖燈之間遇見葵青。",
 };
 
 export const dynamic = "force-static";
