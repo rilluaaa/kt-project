@@ -59,8 +59,8 @@ const scenes: Scene[] = [
     video: assetUrl("/media/kt3.2-scroll.mp4"),
     poster: assetUrl("/media/kt3.2-poster.png"),
     lines: [
-      { text: "濕街接住墨線，也接住每日的腳步。", start: 0.33, end: 0.53, direction: "high-left" },
-      { text: "茶香與木屑，在舊舖前交織成生活。", start: 0.64, end: 0.82, direction: "low-centre" },
+      { text: "茶湯拉成幼線，在蒸氣裏沖出清晨。", start: 0.27, end: 0.48, direction: "high-left" },
+      { text: "木屑隨刻刀落下，舊舖把手藝留在街角。", start: 0.61, end: 0.81, direction: "low-centre" },
     ],
   },
   {
@@ -603,7 +603,9 @@ export default function VideoHome() {
           return (
             <div className={`cinematic-caption caption-${caption.direction}${visible ? " is-visible" : ""}`} key={`${caption.scene.id}-${caption.lineIndex}`}>
               <p className="caption-line">{caption.text}</p>
-              {caption.scene.heritage && caption.lineIndex === 1 && <p className="heritage">{caption.scene.heritage}</p>}
+              {caption.scene.heritage
+                && caption.lineIndex === (caption.scene.id === "street" ? 0 : 1)
+                && <p className="heritage">{caption.scene.heritage}</p>}
             </div>
           );
         })}

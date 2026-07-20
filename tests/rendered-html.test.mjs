@@ -28,6 +28,8 @@ test("server-renders the five-scene 熱熾葵青 film journey and colour finale"
   for (const title of ["山城入墨", "葵涌早茶", "夜工燃光", "海港成脈", "鑼鼓入海"]) {
     assert.match(html, new RegExp(title));
   }
+  assert.match(html, /茶湯拉成幼線，在蒸氣裏沖出清晨。/);
+  assert.match(html, /木屑隨刻刀落下，舊舖把手藝留在街角。/);
   assert.match(html, /kt3\.6-colour\.png/);
   assert.match(html, /探索葵青/);
   assert.doesNotMatch(html, /兩幕試演完成|餘下七幕|第一幕|第二幕|故事進度/);
@@ -73,6 +75,7 @@ test("keeps captions monochrome, removes side labels and holds one seamless fina
   assert.doesNotMatch(page, /className="place"/);
   assert.match(page, /film-scene--final/);
   assert.match(page, /finaleFilmRef/);
+  assert.match(page, /caption\.scene\.id === "street" \? 0 : 1/);
   assert.match(css, /\.video-experience \.heritage \{[\s\S]*?color: #050807/);
   assert.match(css, /\.finale-film-image \{[\s\S]*?object-fit: cover/);
   assert.doesNotMatch(css, /\.finale-backdrop/);
