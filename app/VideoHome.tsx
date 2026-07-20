@@ -62,10 +62,8 @@ const scenes: Scene[] = [
 ];
 
 type AudioEngine = {
-  context: AudioContext;
-  master: GainNode;
-  ambience: GainNode;
-  timer: number;
+  audio: HTMLAudioElement;
+  fadeTo: (volume: number, duration?: number) => void;
   cue: (scene: number) => void;
 };
 
@@ -83,253 +81,30 @@ const lingerEase = (value: number, linger: number) => {
   return (1 - strength) * x + strength * (4 * centred * centred * centred + 0.5);
 };
 
-function createNoise(context: AudioContext, seconds: number) {
-  const buffer = context.createBuffer(1, Math.floor(context.sampleRate * seconds), context.sampleRate);
-  const data = buffer.getChannelData(0);
-  let previous = 0;
-  for (let index = 0; index < data.length; index += 1) {
-    previous = previous * 0.985 + (Math.random() * 2 - 1) * 0.015;
-    data[index] = previous * (0.68 + Math.sin(index / 31000) * 0.16);
-  }
-  return buffer;
-}
-
 function buildSoundtrack(): AudioEngine | null {
   if (typeof window === "undefined") return null;
-  const AudioCtor = window.AudioContext ||
-    (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-  if (!AudioCtor) return null;
-
-  const context = new AudioCtor();
-  const master = context.createGain();
-  const music = context.createGain();
-  const ambience = context.createGain();
-  const delay = context.createDelay(2.5);
-  const feedback = context.createGain();
-  const filter = context.createBiquadFilter();
-  const body = context.createBiquadFilter();
-  const reverb = context.createConvolver();
-  const reverbReturn = context.createGain();
-  const compressor = context.createDynamicsCompressor();
-  master.gain.value = 0.43;
-  music.gain.value = 0.31;
-  ambience.gain.value = 0.12;
-  delay.delayTime.value = 0.43;
-  feedback.gain.value = 0.14;
-  filter.type = "lowpass";
-  filter.frequency.value = 3400;
-  body.type = "peaking";
-  body.frequency.value = 228;
-  body.Q.value = 0.72;
-  body.gain.value = 4.2;
-  reverbReturn.gain.value = 0.29;
-  compressor.threshold.value = -25;
-  compressor.ratio.value = 3;
-  const impulse = context.createBuffer(2, context.sampleRate * 4, context.sampleRate);
-  for (let channel = 0; channel < impulse.numberOfChannels; channel += 1) {
-    const data = impulse.getChannelData(channel);
-    let warmth = 0;
-    for (let index = 0; index < data.length; index += 1) {
-      const decay = Math.pow(1 - index / data.length, 2.8);
-      warmth = warmth * 0.78 + (Math.random() * 2 - 1) * 0.22;
-      data[index] = warmth * decay * (channel === 0 ? 0.78 : 0.72);
-    }
-  }
-  reverb.buffer = impulse;
-  delay.connect(feedback).connect(delay);
-  music.connect(filter).connect(body).connect(master);
-  music.connect(delay).connect(master);
-  music.connect(reverb).connect(reverbReturn).connect(master);
-  ambience.connect(master);
-  master.connect(compressor).connect(context.destination);
-
-  const wind = context.createBufferSource();
-  const windFilter = context.createBiquadFilter();
-  const windGain = context.createGain();
-  wind.buffer = createNoise(context, 12);
-  wind.loop = true;
-  windFilter.type = "bandpass";
-  windFilter.frequency.value = 310;
-  windFilter.Q.value = 0.32;
-  windGain.gain.value = 0.085;
-  wind.connect(windFilter).connect(windGain).connect(ambience);
-  wind.start();
-
-  [49, 73.5, 98].forEach((frequency, index) => {
-    const oscillator = context.createOscillator();
-    const gain = context.createGain();
-    oscillator.type = "sine";
-    oscillator.frequency.value = frequency;
-    gain.gain.value = index === 0 ? 0.04 : 0.014;
-    oscillator.connect(gain).connect(music);
-    oscillator.start();
-  });
-
-  const stringBuffers = new Map<number, AudioBuffer>();
-  const getString = (frequency: number) => {
-    const key = Math.round(frequency);
-    const cached = stringBuffers.get(key);
-    if (cached) return cached;
-    const buffer = context.createBuffer(1, Math.floor(context.sampleRate * 5.8), context.sampleRate);
-    const data = buffer.getChannelData(0);
-    const period = Math.max(2, Math.round(context.sampleRate / frequency));
-    for (let index = 0; index < period; index += 1) {
-      const pickPosition = Math.sin((index / period) * Math.PI);
-      data[index] = (Math.random() * 2 - 1) * (0.56 + pickPosition * 0.44);
-    }
-    for (let index = period; index < data.length; index += 1) {
-      data[index] = (data[index - period] + data[index - period + 1]) * 0.4991;
-    }
-    stringBuffers.set(key, buffer);
-    return buffer;
+  const audio = new Audio(assetUrl("/media/west-lake-wander.mp3"));
+  audio.loop = true;
+  audio.preload = "auto";
+  audio.volume = 0;
+  let fadeFrame = 0;
+  const fadeTo = (volume: number, duration = 900) => {
+    window.cancelAnimationFrame(fadeFrame);
+    const startedAt = performance.now();
+    const from = audio.volume;
+    const draw = (now: number) => {
+      const progress = clamp((now - startedAt) / duration);
+      audio.volume = lerp(from, volume, smooth(progress));
+      if (progress < 1) fadeFrame = window.requestAnimationFrame(draw);
+    };
+    fadeFrame = window.requestAnimationFrame(draw);
   };
-
-  type PluckOrnament = {
-    bend?: number;
-    brightness?: number;
-    harmonic?: boolean;
-    duration?: number;
-  };
-
-  const pluck = (
-    frequency: number,
-    when: number,
-    volume = 0.052,
-    pan = 0,
-    ornament: PluckOrnament = {},
-  ) => {
-    const source = context.createBufferSource();
-    const tone = context.createBiquadFilter();
-    const gain = context.createGain();
-    const panner = context.createStereoPanner();
-    const bridge = context.createBiquadFilter();
-    const duration = ornament.duration ?? 4.9;
-    const bend = ornament.bend ?? 0;
-    source.buffer = getString(frequency);
-    source.playbackRate.setValueAtTime(bend >= 0 ? 0.988 : 1.008, when);
-    source.playbackRate.exponentialRampToValueAtTime(1, when + 0.095);
-    if (Math.abs(bend) > 0.001) {
-      source.playbackRate.exponentialRampToValueAtTime(Math.pow(2, bend / 12), when + 0.78);
-    }
-    tone.type = "lowpass";
-    tone.frequency.setValueAtTime(ornament.brightness ?? 5100, when);
-    tone.frequency.exponentialRampToValueAtTime(680, when + duration * 0.88);
-    bridge.type = "peaking";
-    bridge.frequency.value = 1120 + frequency * 0.6;
-    bridge.Q.value = 1.1;
-    bridge.gain.value = 2.6;
-    gain.gain.setValueAtTime(0.0001, when);
-    gain.gain.exponentialRampToValueAtTime(volume, when + 0.006);
-    gain.gain.exponentialRampToValueAtTime(volume * 0.48, when + 0.22);
-    gain.gain.exponentialRampToValueAtTime(0.0001, when + duration);
-    panner.pan.setValueAtTime(pan, when);
-    source.connect(tone).connect(bridge).connect(gain).connect(panner).connect(music);
-    source.start(when);
-    source.stop(when + duration + 0.08);
-
-    if (ornament.harmonic) {
-      const overtone = context.createOscillator();
-      const overtoneGain = context.createGain();
-      overtone.type = "sine";
-      overtone.frequency.setValueAtTime(frequency * 2.01, when);
-      overtone.frequency.exponentialRampToValueAtTime(frequency * 2, when + 0.16);
-      overtoneGain.gain.setValueAtTime(0.0001, when);
-      overtoneGain.gain.exponentialRampToValueAtTime(volume * 0.18, when + 0.012);
-      overtoneGain.gain.exponentialRampToValueAtTime(0.0001, when + 1.55);
-      overtone.connect(overtoneGain).connect(music);
-      overtone.start(when);
-      overtone.stop(when + 1.6);
-    }
-  };
-
-  const gong = (when: number, volume: number) => {
-    [137, 207, 318, 481].forEach((frequency, index) => {
-      const oscillator = context.createOscillator();
-      const gain = context.createGain();
-      oscillator.type = "sine";
-      oscillator.frequency.value = frequency;
-      gain.gain.setValueAtTime(volume / (1 + index * 0.5), when);
-      gain.gain.exponentialRampToValueAtTime(0.0001, when + 4.6 + index * 0.35);
-      oscillator.connect(gain).connect(music);
-      oscillator.start(when);
-      oscillator.stop(when + 6);
-    });
-  };
-
-  const scale = [146.83, 164.81, 196, 220, 246.94, 293.66, 329.63, 392, 440, 493.88];
-  const phrases = [
-    [5, 7, 6, 5, 3, 2, 3, 5, 6, 5, 3, 2, 3, 5, 7, 6, 5, 3, 2, 0, 2, 3, 5, 6, 8, 7, 6, 5, 3, 2, 3, 5],
-    [3, 5, 6, 8, 7, 5, 6, 5, 3, 2, 3, 5, 6, 7, 8, 7, 6, 5, 3, 5, 7, 6, 5, 3, 2, 0, 2, 3, 5, 3, 2, 3],
-    [7, 8, 9, 8, 7, 6, 5, 6, 7, 5, 3, 2, 3, 5, 6, 8, 7, 6, 5, 3, 5, 6, 7, 8, 9, 8, 7, 5, 6, 3, 2, 3],
-    [2, 3, 5, 3, 6, 5, 3, 2, 0, 2, 3, 5, 6, 5, 3, 2, 3, 5, 7, 6, 5, 3, 2, 0, 2, 3, 5, 6, 5, 3, 2, 0],
-    [6, 7, 9, 8, 7, 6, 5, 3, 5, 6, 3, 2, 3, 5, 6, 7, 8, 9, 8, 7, 6, 5, 3, 2, 3, 5, 7, 6, 5, 3, 2, 3],
-    [5, 3, 2, 3, 5, 7, 6, 5, 8, 7, 5, 3, 2, 3, 5, 6, 7, 6, 5, 3, 2, 0, 2, 3, 5, 7, 8, 7, 6, 5, 3, 2],
-    [8, 9, 8, 7, 6, 8, 7, 6, 5, 3, 5, 6, 7, 8, 7, 5, 6, 5, 3, 2, 3, 5, 6, 8, 9, 8, 7, 6, 5, 3, 2, 3],
-    [3, 2, 0, 2, 3, 5, 6, 5, 3, 2, 0, 2, 3, 5, 6, 7, 6, 5, 3, 2, 3, 5, 7, 6, 5, 3, 2, 0, 2, 3, 5, 3],
-  ];
-  const phraseRoute = [0, 4, 1, 7, 2, 5, 3, 6];
-  const tremolo = (note: number, when: number, strength = 0.024) => {
-    for (let repeat = 0; repeat < 5; repeat += 1) {
-      pluck(scale[note], when + repeat * 0.052, strength * (1 - repeat * 0.08), -0.18 + repeat * 0.09, {
-        brightness: 4600 - repeat * 280,
-        duration: 2.7,
-        harmonic: repeat === 0,
-      });
-    }
-  };
-  const glissando = (notes: number[], when: number, direction = 1) => {
-    notes.forEach((note, offset) => {
-      pluck(scale[note], when + offset * 0.047, 0.017 + offset * 0.0015, -0.42 + offset * 0.16 * direction, {
-        brightness: 5200,
-        duration: 2.4,
-      });
-    });
-  };
-  let step = 0;
-  const timer = window.setInterval(() => {
-    if (context.state !== "running") return;
-    const now = context.currentTime + 0.045;
-    const phraseNumber = Math.floor(step / 32);
-    const longCycle = Math.floor(phraseNumber / phraseRoute.length) % 5;
-    const phrase = phrases[phraseRoute[(phraseNumber + [0, 3, 6, 2, 5][longCycle]) % phraseRoute.length]];
-    const beat = step % 32;
-    const note = phrase[beat];
-    const accent = beat % 8 === 0 ? 1.12 : beat % 4 === 0 ? 0.92 : 0.72;
-    if (beat % 11 === 6) {
-      pluck(scale[Math.max(0, note - 1)], now, 0.016, -0.24, { duration: 2.2 });
-      pluck(scale[note], now + 0.048, 0.046 * accent, Math.sin(step * 0.31) * 0.3, {
-        bend: phraseNumber % 2 === 0 ? 0.34 : -0.2,
-        harmonic: beat % 22 === 6,
-      });
-    } else {
-      pluck(scale[note], now, 0.044 * accent, Math.sin(step * 0.31) * 0.3, {
-        bend: beat % 13 === 4 ? 0.28 : 0,
-        harmonic: beat % 16 === 12,
-      });
-    }
-    if (beat % 8 === 0) {
-      pluck(scale[[0, 2, 3, 2][(phraseNumber + beat / 8) % 4]] * 0.5, now, 0.027, -0.34, {
-        brightness: 2500,
-        duration: 5.4,
-      });
-    }
-    if (beat === 14 || beat === 30) tremolo(note, now + 0.028, 0.017);
-    if (beat === 23 && phraseNumber % 2 === 0) {
-      glissando([2, 3, 5, 6, 8], now + 0.025, 1);
-    }
-    step += 1;
-  }, 215);
-
   return {
-    context,
-    master,
-    ambience,
-    timer,
-    cue: (scene) => {
-      const now = context.currentTime + 0.03;
-      gong(now, scene === 0 ? 0.018 : 0.024);
-      glissando(scene === 0 ? [2, 3, 5, 7] : [3, 5, 6, 8], now + 0.04, 1);
-      tremolo(scene === 0 ? 5 : 6, now + 0.22, 0.013);
+    audio,
+    fadeTo,
+    cue: () => {
+      fadeTo(0.25, 170);
+      window.setTimeout(() => fadeTo(0.38, 950), 260);
     },
   };
 }
@@ -516,8 +291,9 @@ export default function VideoHome() {
     if (cursorTimer.current) window.clearTimeout(cursorTimer.current);
     if (holdFrame.current) window.cancelAnimationFrame(holdFrame.current);
     if (audioRef.current) {
-      window.clearInterval(audioRef.current.timer);
-      if (audioRef.current.context.state !== "closed") void audioRef.current.context.close();
+      audioRef.current.audio.pause();
+      audioRef.current.audio.removeAttribute("src");
+      audioRef.current.audio.load();
     }
   }, []);
 
@@ -526,8 +302,9 @@ export default function VideoHome() {
     const engine = audioRef.current;
     if (!engine) return;
     try {
-      await engine.context.resume();
-      engine.master.gain.setTargetAtTime(muted ? 0 : 0.46, engine.context.currentTime, 0.35);
+      engine.audio.muted = muted;
+      await engine.audio.play();
+      engine.fadeTo(muted ? 0 : 0.38, 1250);
     } catch { /* first gesture will retry */ }
   }, [muted]);
 
@@ -550,7 +327,10 @@ export default function VideoHome() {
     const next = !muted;
     setMuted(next);
     const engine = audioRef.current;
-    if (engine) engine.master.gain.setTargetAtTime(next ? 0 : 0.46, engine.context.currentTime, 0.35);
+    if (engine) {
+      engine.audio.muted = next;
+      if (!next) engine.fadeTo(0.38, 850);
+    }
   };
 
   const completeHold = useCallback(() => {
@@ -657,7 +437,7 @@ export default function VideoHome() {
         <div>
           <button onClick={() => setReducedMotion((value) => !value)}>{reducedMotion ? "恢復動畫" : "減少動畫"}</button>
           <button className="sound" onClick={toggleSound} aria-pressed={!muted}>
-            <span>{muted ? "開啟聲音" : "古箏配樂"}</span>
+            <span>{muted ? "開啟聲音" : "西湖漫遊"}</span>
             <i className={muted ? "muted" : ""} aria-hidden="true"><b /><b /><b /><b /></i>
           </button>
         </div>

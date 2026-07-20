@@ -83,13 +83,13 @@ const fragmentShader = /* glsl */ `
     float pigment = fbm(flow * 25.0 + advection * 4.0);
     float granulation = ridge(flow * 61.0 + vec2(paper * 3.2));
 
-    float holdRadius = mix(0.018, 0.19, pow(uHold, 0.68));
-    float surfaceTension = sin(angle * 8.0 + veins * 3.8) * 0.018 + sin(angle * 17.0 - pigment * 2.2) * 0.007;
+    float holdRadius = mix(0.006, 0.075, pow(uHold, 0.68));
+    float surfaceTension = sin(angle * 8.0 + veins * 3.8) * 0.006 + sin(angle * 17.0 - pigment * 2.2) * 0.0025;
     float holdEdge = holdRadius + surfaceTension * uHold + (fibres - 0.5) * 0.055 + (veins - 0.5) * 0.017;
     float holdInk = smoothstep(holdEdge + 0.014, holdEdge - 0.012, radius);
-    float absorption = smoothstep(holdEdge + 0.072 + paper * 0.012, holdEdge + 0.004, radius);
+    float absorption = smoothstep(holdEdge + 0.022 + paper * 0.006, holdEdge + 0.002, radius);
     float wetEdge = max(0.0, absorption - holdInk * 0.82);
-    float pigmentRing = smoothstep(0.026, 0.0025, abs(radius - holdEdge + 0.003)) * (0.5 + granulation * 0.5);
+    float pigmentRing = smoothstep(0.009, 0.0015, abs(radius - holdEdge + 0.001)) * (0.5 + granulation * 0.5);
     float sediment = holdInk * smoothstep(0.61, 0.9, pigment) * (0.46 + granulation * 0.54);
 
     float capillary = 0.0;
@@ -99,7 +99,7 @@ const fragmentShader = /* glsl */ `
       float reach = holdRadius * (1.18 + hash(vec2(fi, 2.4)) * 0.82);
       float wander = sin(radius * (54.0 + fi * 1.3) + fi * 0.8) * 0.03;
       float rayDistance = abs(sin(angle - branchAngle + wander)) * radius;
-      float width = mix(0.0018, 0.0054, hash(vec2(fi, 5.1)));
+      float width = mix(0.0009, 0.0028, hash(vec2(fi, 5.1)));
       float ray = smoothstep(width, width * 0.16, rayDistance);
       float segment = smoothstep(holdRadius * 0.62, holdRadius * 0.94, radius)
         * (1.0 - smoothstep(reach, reach + 0.04, radius));

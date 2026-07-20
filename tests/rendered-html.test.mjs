@@ -82,15 +82,18 @@ test("long press has wet-ink progress, full-screen payoff and replay support", a
   assert.match(css, /\.effect-scene-1/);
 });
 
-test("keeps the shared WebGL loading ink and long-form guzheng score", async () => {
+test("keeps the original loading mark, physical ink burst and supplied soundtrack", async () => {
   const opening = await readFile(new URL("../app/ThreeInkOpening.tsx", import.meta.url), "utf8");
   const page = await readFile(new URL("../app/VideoHome.tsx", import.meta.url), "utf8");
   assert.match(opening, /new THREE\.WebGLRenderer/);
   assert.match(opening, /uProgress/);
   assert.match(opening, /uOpening/);
   assert.match(opening, /capillary/);
-  assert.match(page, /const phrases = \[/);
-  assert.match(page, /const phraseRoute = \[/);
-  assert.match(page, /const longCycle =/);
-  assert.match(page, /古箏配樂/);
+  assert.match(opening, /openingAlpha/);
+  assert.match(page, /west-lake-wander\.mp3/);
+  assert.match(page, /audio\.loop = true/);
+  assert.match(page, /西湖漫遊/);
+  assert.doesNotMatch(page, /const phrases = \[/);
+  const soundtrack = await stat(new URL("../public/media/west-lake-wander.mp3", import.meta.url));
+  assert.ok(soundtrack.size > 5_000_000, "supplied BGM should be shipped at source quality");
 });
