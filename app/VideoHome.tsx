@@ -12,39 +12,43 @@ import {
   useRef,
   useState,
 } from "react";
+import Image from "next/image";
 
 export const dynamic = "force-static";
 
 const ThreeInkOpening = lazy(() => import("./ThreeInkOpening"));
 const ThreeFilmInk = lazy(() => import("./ThreeFilmInk"));
+const SceneInteraction = lazy(() => import("./SceneInteraction"));
 const assetPrefix = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 const assetUrl = (path: string) => `${assetPrefix}${path}`;
 
+type CaptionDirection =
+  | "near-left"
+  | "far-right"
+  | "high-left"
+  | "low-centre"
+  | "high-right"
+  | "low-left";
+
 type Scene = {
-  id: "mountain" | "street";
+  id: "mountain" | "street" | "night-craft" | "harbour" | "opera";
   place: string;
-  interaction: string;
+  interaction?: string;
   heritage?: string;
   video: string;
   poster: string;
-  lines: Array<{
-    text: string;
-    start: number;
-    end: number;
-    direction: "near-left" | "far-right" | "low-centre" | "high-left";
-  }>;
+  lines: Array<{ text: string; start: number; end: number; direction: CaptionDirection }>;
 };
 
 const scenes: Scene[] = [
   {
     id: "mountain",
     place: "山城入墨",
-    interaction: "喚醒山脈",
     video: assetUrl("/media/kt3.1-scroll.mp4"),
     poster: assetUrl("/media/kt3.1-poster.png"),
     lines: [
-      { text: "霧穿過山脊，墨沿石縫落進城市。", start: 0.09, end: 0.34, direction: "near-left" },
-      { text: "山與樓之間，葵青從海霧中醒來。", start: 0.49, end: 0.77, direction: "far-right" },
+      { text: "霧穿過山脊，墨沿石縫落進城市。", start: 0.34, end: 0.53, direction: "near-left" },
+      { text: "山與樓之間，葵青從海霧中醒來。", start: 0.64, end: 0.82, direction: "far-right" },
     ],
   },
   {
@@ -55,16 +59,52 @@ const scenes: Scene[] = [
     video: assetUrl("/media/kt3.2-scroll.mp4"),
     poster: assetUrl("/media/kt3.2-poster.png"),
     lines: [
-      { text: "濕街接住墨線，也接住每日的腳步。", start: 0.08, end: 0.35, direction: "high-left" },
-      { text: "茶香與木屑，在舊舖前交織成生活。", start: 0.5, end: 0.8, direction: "low-centre" },
+      { text: "濕街接住墨線，也接住每日的腳步。", start: 0.33, end: 0.53, direction: "high-left" },
+      { text: "茶香與木屑，在舊舖前交織成生活。", start: 0.64, end: 0.82, direction: "low-centre" },
+    ],
+  },
+  {
+    id: "night-craft",
+    place: "夜工燃光",
+    interaction: "燃亮霓虹",
+    heritage: "霓虹燈管製作技藝",
+    video: assetUrl("/media/kt3.3-scroll.mp4"),
+    poster: assetUrl("/media/kt3.3-poster.png"),
+    lines: [
+      { text: "燈火沿着匠人的手藝，在夜色裏逐筆亮起。", start: 0.36, end: 0.56, direction: "high-right" },
+      { text: "金屬、竹影與人情，磨成葵涌的一夜光。", start: 0.66, end: 0.84, direction: "low-left" },
+    ],
+  },
+  {
+    id: "harbour",
+    place: "海港成脈",
+    video: assetUrl("/media/kt3.4-scroll.mp4"),
+    poster: assetUrl("/media/kt3.4-poster.png"),
+    lines: [
+      { text: "吊臂提起晨霧，貨櫃把城市的脈搏排成長線。", start: 0.33, end: 0.54, direction: "near-left" },
+      { text: "潮水一進一退，海港仍把遠方送到眼前。", start: 0.65, end: 0.83, direction: "high-right" },
+    ],
+  },
+  {
+    id: "opera",
+    place: "鑼鼓入海",
+    interaction: "點亮戲棚",
+    heritage: "竹棚戲台與社區節慶",
+    video: assetUrl("/media/kt3.5-scroll.mp4"),
+    poster: assetUrl("/media/kt3.5-poster.png"),
+    lines: [
+      { text: "竹棚靠着海風搭起，一聲鑼鼓叫亮整個夜晚。", start: 0.34, end: 0.55, direction: "low-left" },
+      { text: "燈影照住台前台後，也照住一代代相聚的人。", start: 0.65, end: 0.84, direction: "far-right" },
     ],
   },
 ];
 
+const interactionSceneIndexes = new Set([1, 2, 4]);
+
 type AudioEngine = {
   audio: HTMLAudioElement;
   fadeTo: (volume: number, duration?: number) => void;
-  cue: (scene: number) => void;
+  cue: () => void;
 };
 
 const clamp = (value: number, min = 0, max = 1) => Math.min(max, Math.max(min, value));
@@ -74,12 +114,6 @@ const smooth = (value: number) => {
 };
 const range = (value: number, start: number, end: number) => smooth((value - start) / (end - start));
 const lerp = (a: number, b: number, amount: number) => a + (b - a) * amount;
-const lingerEase = (value: number, linger: number) => {
-  const x = clamp(value);
-  const strength = clamp(linger);
-  const centred = x - 0.5;
-  return (1 - strength) * x + strength * (4 * centred * centred * centred + 0.5);
-};
 
 function buildSoundtrack(): AudioEngine | null {
   if (typeof window === "undefined") return null;
@@ -103,17 +137,19 @@ function buildSoundtrack(): AudioEngine | null {
     audio,
     fadeTo,
     cue: () => {
-      fadeTo(0.25, 170);
-      window.setTimeout(() => fadeTo(0.38, 950), 260);
+      fadeTo(0.25, 180);
+      window.setTimeout(() => fadeTo(0.38, 1100), 300);
     },
   };
 }
 
+/* Nearly one third of every chapter is an intentional still-image hold. The
+   remaining distance then performs the authored ten-second camera move. */
 function directedTimeline(progress: number) {
-  if (progress <= 0.08) return lerp(0, 0.025, smooth(progress / 0.08));
-  if (progress <= 0.67) return lerp(0.025, 0.765, smooth((progress - 0.08) / 0.59));
-  if (progress <= 0.8) return lerp(0.765, 0.81, smooth((progress - 0.67) / 0.13));
-  return lerp(0.81, 0.985, smooth((progress - 0.8) / 0.2));
+  const p = clamp(progress);
+  if (p <= 0.3) return lerp(0, 0.012, smooth(p / 0.3));
+  if (p <= 0.86) return lerp(0.012, 0.925, smooth((p - 0.3) / 0.56));
+  return lerp(0.925, 0.995, smooth((p - 0.86) / 0.14));
 }
 
 export default function VideoHome() {
@@ -125,89 +161,121 @@ export default function VideoHome() {
   const [transition, setTransition] = useState(0);
   const [muted, setMuted] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
+  const [opening, setOpening] = useState(false);
+  const [firstVideoReady, setFirstVideoReady] = useState(false);
+  const [videoSources, setVideoSources] = useState<Array<string | null>>(() => scenes.map(() => null));
   const [cursorVisible, setCursorVisible] = useState(false);
   const [holdProgress, setHoldProgress] = useState(0);
   const [holding, setHolding] = useState(false);
   const [burstKey, setBurstKey] = useState(0);
   const [effectScene, setEffectScene] = useState<number | null>(null);
-  const [opening, setOpening] = useState(false);
-  const [videoReady, setVideoReady] = useState(0);
-  const [videoSources, setVideoSources] = useState<Array<string | null>>(() => scenes.map(() => null));
+  const [effectVideo, setEffectVideo] = useState<HTMLVideoElement | null>(null);
+  const [effectKey, setEffectKey] = useState(0);
   const [inkOrigin, setInkOrigin] = useState({ x: 0, y: 0 });
+
   const stageRef = useRef<HTMLDivElement>(null);
   const storyRef = useRef<HTMLElement>(null);
   const sectionRefs = useRef<Array<HTMLElement | null>>([]);
+  const filmSceneRefs = useRef<Array<HTMLDivElement | null>>([]);
   const videoRefs = useRef<Array<HTMLVideoElement | null>>([]);
   const loadedVideos = useRef(new Set<number>());
   const audioRef = useRef<AudioEngine | null>(null);
   const holdFrame = useRef<number | null>(null);
   const holdBegan = useRef(0);
-  const pointerRef = useRef({ x: 0, y: 0 });
   const cursorTimer = useRef<number | null>(null);
   const smoothedScroll = useRef(0);
   const smoothedVideoTime = useRef(scenes.map(() => 0));
   const activeSceneRef = useRef(0);
-  const objectUrls = useRef<string[]>([]);
+  const loadingBegan = useRef(0);
 
   const markVideoReady = (index: number) => {
     if (loadedVideos.current.has(index)) return;
     loadedVideos.current.add(index);
-    setVideoReady(loadedVideos.current.size);
+    if (index === 0) setFirstVideoReady(true);
   };
 
-  /* scroll-world's key reliability rule: fetch the film as a Blob before
-     scrubbing. Blob URLs stay seekable even when a production host does not
-     expose useful byte ranges, so scroll never gets pinned to frame zero. */
+  /* Each source becomes a local Blob before it is scrubbed. Only the first two
+     are requested at the gate; later chapters are warmed after entry. */
   useEffect(() => {
     let disposed = false;
-    const controllers = scenes.map(() => new AbortController());
-    scenes.forEach((scene, index) => {
-      void fetch(scene.video, { signal: controllers[index].signal })
-        .then((response) => {
-          if (!response.ok) throw new Error(`film ${index} failed`);
-          return response.blob();
-        })
-        .then((blob) => {
-          if (disposed) return;
-          const url = URL.createObjectURL(blob);
-          objectUrls.current.push(url);
-          setVideoSources((current) => current.map((source, sourceIndex) => sourceIndex === index ? url : source));
-        })
-        .catch(() => {
-          if (disposed) return;
-          setVideoSources((current) => current.map((source, sourceIndex) => sourceIndex === index ? scene.video : source));
-        });
-    });
-    const fallback = window.setTimeout(() => {
-      if (!loadedVideos.current.size) setVideoReady(1);
-    }, 7000);
+    const indexes = [0, 1];
+    const controllers = indexes.map(() => new AbortController());
+    const urls: string[] = [];
+    loadingBegan.current = performance.now();
+    const fetchFilm = async (index: number, signal: AbortSignal) => {
+      try {
+        const response = await fetch(scenes[index].video, { signal });
+        if (!response.ok) throw new Error(`film ${index} failed`);
+        const blob = await response.blob();
+        if (disposed) return;
+        const url = URL.createObjectURL(blob);
+        urls.push(url);
+        setVideoSources((current) => current.map((source, sourceIndex) => sourceIndex === index ? url : source));
+      } catch {
+        if (disposed) return;
+        setVideoSources((current) => current.map((source, sourceIndex) => sourceIndex === index ? scenes[index].video : source));
+      }
+    };
+    void (async () => {
+      for (let position = 0; position < indexes.length; position += 1) {
+        await fetchFilm(indexes[position], controllers[position].signal);
+      }
+    })();
+    const fallback = window.setTimeout(() => setFirstVideoReady(true), 9000);
     return () => {
       disposed = true;
       controllers.forEach((controller) => controller.abort());
       window.clearTimeout(fallback);
-      objectUrls.current.forEach((url) => URL.revokeObjectURL(url));
-      objectUrls.current = [];
+      urls.forEach((url) => URL.revokeObjectURL(url));
     };
   }, []);
 
   useEffect(() => {
-    const began = performance.now();
-    let displayed = 0;
-    const interval = window.setInterval(() => {
-      const cap = videoReady >= 1 ? 99 : 91;
-      displayed = Math.min(cap, displayed + (displayed < 58 ? 2 : 1));
-      setLoading(displayed);
-    }, 52);
-    if (videoReady >= 1) {
-      const delay = Math.max(0, 2500 - (performance.now() - began));
-      window.setTimeout(() => {
-        window.clearInterval(interval);
+    if (!started) return;
+    let disposed = false;
+    const indexes = [2, 3, 4];
+    const controllers = indexes.map(() => new AbortController());
+    const urls: string[] = [];
+    const fetchFilm = async (index: number, signal: AbortSignal) => {
+      try {
+        const response = await fetch(scenes[index].video, { signal });
+        if (!response.ok) throw new Error(`film ${index} failed`);
+        const blob = await response.blob();
+        if (disposed) return;
+        const url = URL.createObjectURL(blob);
+        urls.push(url);
+        setVideoSources((current) => current.map((source, sourceIndex) => sourceIndex === index ? url : source));
+      } catch {
+        if (disposed) return;
+        setVideoSources((current) => current.map((source, sourceIndex) => sourceIndex === index ? scenes[index].video : source));
+      }
+    };
+    void (async () => {
+      for (let position = 0; position < indexes.length; position += 1) {
+        await fetchFilm(indexes[position], controllers[position].signal);
+      }
+    })();
+    return () => {
+      disposed = true;
+      controllers.forEach((controller) => controller.abort());
+      urls.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, [started]);
+
+  useEffect(() => {
+    if (firstVideoReady) {
+      const delay = Math.max(0, 1750 - (performance.now() - loadingBegan.current));
+      const finish = window.setTimeout(() => {
         setLoading(100);
         window.setTimeout(() => setReady(true), 360);
       }, delay);
+      return () => window.clearTimeout(finish);
     }
+    const interval = window.setInterval(() => {
+      setLoading((value) => Math.min(92, value + (value < 56 ? 2 : 1)));
+    }, 56);
     return () => window.clearInterval(interval);
-  }, [videoReady]);
+  }, [firstVideoReady]);
 
   useEffect(() => {
     const media = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -225,57 +293,69 @@ export default function VideoHome() {
     let disposed = false;
     let frame = 0;
     let lastVideoSeek = 0;
+    const drift = [
+      [-1.25, 0.9, 1.15, -0.85],
+      [1.1, -0.7, -1.2, 0.8],
+      [-0.85, -0.75, 1.05, 0.7],
+      [1.2, 0.7, -1.05, -0.8],
+      [-1.05, 0.65, 1.15, -0.7],
+    ];
+
     const tick = (now: number) => {
       if (disposed) return;
       const target = window.scrollY;
-      smoothedScroll.current += (target - smoothedScroll.current) * (reducedMotion ? 1 : 0.085);
+      smoothedScroll.current += (target - smoothedScroll.current) * (reducedMotion ? 1 : 0.09);
       const value = smoothedScroll.current;
       const viewport = Math.max(1, window.innerHeight);
-      const first = sectionRefs.current[0];
-      const second = sectionRefs.current[1];
-      if (first && second) {
-        const p0 = clamp((value - first.offsetTop) / Math.max(viewport, first.offsetHeight - viewport));
-        const p1 = clamp((value - second.offsetTop) / Math.max(viewport, second.offsetHeight - viewport));
-        const blend = range(value, second.offsetTop - viewport * 0.68, second.offsetTop + viewport * 0.38);
-        const nextScene = blend > 0.55 || p1 > 0.015 ? 1 : 0;
-        const activeProgress = nextScene === 0 ? p0 : p1;
-        if (activeSceneRef.current !== nextScene) {
-          activeSceneRef.current = nextScene;
-          setActiveScene(nextScene);
-          setHoldProgress(0);
-        }
-        setSceneProgress((previous) => Math.abs(previous - activeProgress) > 0.003 ? activeProgress : previous);
-        setTransition((previous) => Math.abs(previous - blend) > 0.004 ? blend : previous);
+      const progress = sectionRefs.current.map((section) => {
+        if (!section) return 0;
+        return clamp((value - section.offsetTop) / Math.max(1, section.offsetHeight - viewport));
+      });
 
-        const stage = stageRef.current;
-        if (stage) {
-          const s0 = smooth(p0);
-          const s1 = smooth(p1);
-          const peak = Math.sin(blend * Math.PI);
-          stage.style.setProperty("--scene-a", `${1 - blend}`);
-          stage.style.setProperty("--scene-b", `${blend}`);
-          stage.style.setProperty("--transition-peak", `${peak}`);
-          stage.style.setProperty("--a-x", `${lerp(-0.8, 0.55, s0)}vw`);
-          stage.style.setProperty("--a-y", `${lerp(0.7, -0.55, s0)}vh`);
-          stage.style.setProperty("--a-scale", `${lerp(1.025, 1.055, range(p0, 0.08, 0.78))}`);
-          stage.style.setProperty("--b-x", `${lerp(0.65, -0.6, s1)}vw`);
-          stage.style.setProperty("--b-y", `${lerp(-0.45, 0.65, s1)}vh`);
-          stage.style.setProperty("--b-scale", `${lerp(1.03, 1.06, range(p1, 0.08, 0.82))}`);
-        }
+      let current = 0;
+      sectionRefs.current.forEach((section, index) => {
+        if (section && value >= section.offsetTop - 1) current = index;
+      });
+      current = Math.min(scenes.length - 1, current);
+      const currentProgress = progress[current] ?? 0;
+      const blend = current < scenes.length - 1 ? range(currentProgress, 0.875, 1) : 0;
+      const transitionPeak = Math.sin(blend * Math.PI);
 
-        if (now - lastVideoSeek > 16) {
-          lastVideoSeek = now;
-          [p0, p1].forEach((progress, index) => {
-            const video = videoRefs.current[index];
-            if (!video || !Number.isFinite(video.duration) || video.duration <= 0) return;
-            const mapped = directedTimeline(lingerEase(progress, index === 0 ? 0.24 : 0.3));
-            smoothedVideoTime.current[index] += (mapped - smoothedVideoTime.current[index]) * (reducedMotion ? 1 : 0.18);
-            const desired = video.duration * smoothedVideoTime.current[index];
-            if (!video.seeking && Math.abs(video.currentTime - desired) > 0.018) {
-              try { video.currentTime = desired; } catch { /* blob metadata may still be settling */ }
-            }
-          });
-        }
+      if (activeSceneRef.current !== current) {
+        activeSceneRef.current = current;
+        setActiveScene(current);
+        setHoldProgress(0);
+        setCursorVisible(false);
+      }
+      setSceneProgress((previous) => Math.abs(previous - currentProgress) > 0.003 ? currentProgress : previous);
+      setTransition((previous) => Math.abs(previous - transitionPeak) > 0.004 ? transitionPeak : previous);
+
+      filmSceneRefs.current.forEach((element, index) => {
+        if (!element) return;
+        const opacity = index === current ? 1 - blend : index === current + 1 ? blend : 0;
+        const p = progress[index] ?? 0;
+        const eased = smooth(p);
+        const [fromX, fromY, toX, toY] = drift[index];
+        element.style.setProperty("--scene-opacity", `${opacity}`);
+        element.style.setProperty("--scene-x", `${lerp(fromX, toX, eased)}vw`);
+        element.style.setProperty("--scene-y", `${lerp(fromY, toY, eased)}vh`);
+        element.style.setProperty("--scene-scale", `${lerp(1.012, 1.052, range(p, 0.28, 0.86))}`);
+      });
+      stageRef.current?.style.setProperty("--transition-peak", `${transitionPeak}`);
+
+      if (now - lastVideoSeek > 18 && effectScene === null) {
+        lastVideoSeek = now;
+        const sought = current < scenes.length - 1 && blend > 0.01 ? [current, current + 1] : [current];
+        sought.forEach((index) => {
+          const video = videoRefs.current[index];
+          if (!video || !Number.isFinite(video.duration) || video.duration <= 0) return;
+          const mapped = directedTimeline(progress[index] ?? 0);
+          smoothedVideoTime.current[index] += (mapped - smoothedVideoTime.current[index]) * (reducedMotion ? 1 : 0.2);
+          const desired = video.duration * smoothedVideoTime.current[index];
+          if (!video.seeking && Math.abs(video.currentTime - desired) > 0.018) {
+            try { video.currentTime = desired; } catch { /* Blob metadata can still be settling. */ }
+          }
+        });
       }
       frame = window.requestAnimationFrame(tick);
     };
@@ -285,11 +365,12 @@ export default function VideoHome() {
       disposed = true;
       window.cancelAnimationFrame(frame);
     };
-  }, [started, reducedMotion]);
+  }, [effectScene, reducedMotion, started]);
 
   useEffect(() => () => {
     if (cursorTimer.current) window.clearTimeout(cursorTimer.current);
     if (holdFrame.current) window.cancelAnimationFrame(holdFrame.current);
+    document.documentElement.classList.remove("scroll-locked");
     if (audioRef.current) {
       audioRef.current.audio.pause();
       audioRef.current.audio.removeAttribute("src");
@@ -305,13 +386,13 @@ export default function VideoHome() {
       engine.audio.muted = muted;
       await engine.audio.play();
       engine.fadeTo(muted ? 0 : 0.38, 1250);
-    } catch { /* first gesture will retry */ }
+    } catch { /* A later user gesture will retry. */ }
   }, [muted]);
 
   const startJourney = (event: ReactMouseEvent<HTMLButtonElement>) => {
     const rect = event.currentTarget.getBoundingClientRect();
-    pointerRef.current = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
-    setInkOrigin(pointerRef.current);
+    const origin = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+    setInkOrigin(origin);
     setOpening(true);
     setBurstKey((value) => value + 1);
     void startAudio();
@@ -326,28 +407,34 @@ export default function VideoHome() {
     await startAudio();
     const next = !muted;
     setMuted(next);
-    const engine = audioRef.current;
-    if (engine) {
-      engine.audio.muted = next;
-      if (!next) engine.fadeTo(0.38, 850);
+    if (audioRef.current) {
+      audioRef.current.audio.muted = next;
+      if (!next) audioRef.current.fadeTo(0.38, 850);
     }
   };
+
+  const interactionAvailable = started
+    && effectScene === null
+    && interactionSceneIndexes.has(activeScene)
+    && sceneProgress >= 0.34
+    && sceneProgress <= 0.82
+    && Boolean(videoSources[activeScene]);
 
   const completeHold = useCallback(() => {
     const scene = activeSceneRef.current;
     setHolding(false);
     setHoldProgress(1);
-    setEffectScene(scene);
     setBurstKey((value) => value + 1);
-    audioRef.current?.cue(scene);
-    document.documentElement.classList.remove("scroll-locked");
-    window.setTimeout(() => setHoldProgress(0), 520);
-    window.setTimeout(() => setEffectScene((current) => current === scene ? null : current), 3300);
+    setEffectVideo(videoRefs.current[scene]);
+    setEffectScene(scene);
+    setEffectKey((value) => value + 1);
+    setCursorVisible(false);
+    audioRef.current?.cue();
+    window.setTimeout(() => setHoldProgress(0), 420);
   }, []);
 
   const beginHold = useCallback(() => {
-    if (!started || holdFrame.current) return;
-    setCursorVisible(true);
+    if (!interactionAvailable || holdFrame.current) return;
     setHolding(true);
     document.documentElement.classList.add("scroll-locked");
     holdBegan.current = performance.now();
@@ -362,7 +449,7 @@ export default function VideoHome() {
       }
     };
     holdFrame.current = window.requestAnimationFrame(draw);
-  }, [completeHold, started]);
+  }, [completeHold, interactionAvailable]);
 
   const endHold = useCallback(() => {
     if (!holdFrame.current) return;
@@ -373,43 +460,40 @@ export default function VideoHome() {
     setHoldProgress(0);
   }, []);
 
+  const finishInteraction = useCallback(() => {
+    document.documentElement.classList.remove("scroll-locked");
+    setEffectScene(null);
+    setEffectVideo(null);
+    setHoldProgress(0);
+  }, []);
+
   const handlePointerMove = (event: ReactPointerEvent<HTMLElement>) => {
-    if (!started) return;
-    pointerRef.current = { x: event.clientX, y: event.clientY };
-    setInkOrigin(pointerRef.current);
-    stageRef.current?.style.setProperty("--pointer-x", `${(event.clientX / Math.max(1, window.innerWidth) - 0.5) * -1.1}vw`);
-    stageRef.current?.style.setProperty("--pointer-y", `${(event.clientY / Math.max(1, window.innerHeight) - 0.5) * -0.75}vh`);
+    if (!started || effectScene !== null) return;
+    const origin = { x: event.clientX, y: event.clientY };
+    setInkOrigin(origin);
+    stageRef.current?.style.setProperty("--pointer-x", `${(event.clientX / Math.max(1, window.innerWidth) - 0.5) * -0.8}vw`);
+    stageRef.current?.style.setProperty("--pointer-y", `${(event.clientY / Math.max(1, window.innerHeight) - 0.5) * -0.55}vh`);
     const cue = document.querySelector<HTMLElement>(".hold-cue");
     cue?.style.setProperty("--cursor-x", `${event.clientX}px`);
     cue?.style.setProperty("--cursor-y", `${event.clientY}px`);
-    setCursorVisible(true);
+    if (interactionAvailable) setCursorVisible(true);
     if (cursorTimer.current) window.clearTimeout(cursorTimer.current);
     cursorTimer.current = window.setTimeout(() => {
       if (!holding) setCursorVisible(false);
     }, 2900);
   };
 
-  const handlePointerDown = (event: ReactPointerEvent<HTMLElement>) => {
-    const target = event.target as HTMLElement;
-    if (target.closest("button") || target.closest("a")) return;
-    pointerRef.current = { x: event.clientX, y: event.clientY };
-    setInkOrigin(pointerRef.current);
-    beginHold();
-  };
-
   const captions = useMemo(() => scenes.flatMap((scene, sceneIndex) =>
-    scene.lines.map((line, lineIndex) => ({ ...line, sceneIndex, lineIndex, scene }))
+    scene.lines.map((line, lineIndex) => ({ ...line, sceneIndex, lineIndex, scene })),
   ), []);
   const currentScene = scenes[activeScene];
 
   return (
     <main
-      className={`experience video-experience${started ? " is-started" : ""}${opening ? " is-opening" : ""}${holding ? " is-holding" : ""}${effectScene !== null ? ` has-effect effect-scene-${effectScene}` : ""}${reducedMotion ? " reduce-motion" : ""}`}
+      className={`experience video-experience${started ? " is-started" : ""}${opening ? " is-opening" : ""}${holding ? " is-holding" : ""}${effectScene !== null ? " is-interacting" : ""}${reducedMotion ? " reduce-motion" : ""}`}
       onPointerMove={handlePointerMove}
-      onPointerDown={handlePointerDown}
       onPointerUp={endHold}
       onPointerCancel={endHold}
-      onPointerLeave={endHold}
     >
       <div className={`loader${ready ? " is-ready" : ""}${started ? " is-hidden" : ""}`}>
         <div className="loader-scene" style={{ "--loader-image": `url(${scenes[0].poster})` } as CSSProperties} aria-hidden="true" />
@@ -445,14 +529,18 @@ export default function VideoHome() {
 
       <div className="film-world" ref={stageRef} aria-hidden="true">
         {scenes.map((scene, index) => (
-          <div className={`film-scene film-scene--${index}`} key={scene.id}>
-            <div className="film-plane">
+          <div
+            className={`film-scene film-scene--${index}`}
+            ref={(node) => { filmSceneRefs.current[index] = node; }}
+            key={scene.id}
+          >
+            <div className="film-plane" style={{ "--poster-image": `url(${scene.poster})` } as CSSProperties}>
               <video
                 ref={(node) => { videoRefs.current[index] = node; }}
                 className="scene-film"
                 muted
                 playsInline
-                preload="auto"
+                preload={index < 2 ? "auto" : "metadata"}
                 poster={scene.poster}
                 src={videoSources[index] ?? undefined}
                 onLoadedMetadata={() => markVideoReady(index)}
@@ -461,17 +549,16 @@ export default function VideoHome() {
                 onError={() => markVideoReady(index)}
               />
               <div className="film-grade" />
-              <div className="watermark-veil" />
             </div>
           </div>
         ))}
         <div className="depth-fog depth-fog--far" />
         <div className="depth-fog depth-fog--near" />
-        <div className="transition-occluder"><i /><i /><i /></div>
+        <div className="transition-occluder"><i /><i /><i /><i /></div>
         <div className="paper-fibres" />
         <Suspense fallback={null}>
           <ThreeFilmInk
-            transition={transition * 0.34}
+            transition={transition}
             holdProgress={holdProgress}
             burstKey={burstKey}
             origin={inkOrigin}
@@ -483,7 +570,10 @@ export default function VideoHome() {
 
       <div className="caption-stage" aria-live="polite">
         {captions.map((caption) => {
-          const visible = activeScene === caption.sceneIndex && sceneProgress >= caption.start && sceneProgress <= caption.end;
+          const visible = effectScene === null
+            && activeScene === caption.sceneIndex
+            && sceneProgress >= caption.start
+            && sceneProgress <= caption.end;
           return (
             <div className={`cinematic-caption caption-${caption.direction}${visible ? " is-visible" : ""}`} key={`${caption.scene.id}-${caption.lineIndex}`}>
               <p className="place">{caption.scene.place}</p>
@@ -494,42 +584,70 @@ export default function VideoHome() {
         })}
       </div>
 
-      <button
-        className={`hold-cue${cursorVisible ? " is-visible" : ""}${holding ? " is-holding" : ""}`}
-        style={{ "--hold": holdProgress } as CSSProperties}
-        onPointerDown={(event) => { event.stopPropagation(); beginHold(); }}
-        onPointerUp={(event) => { event.stopPropagation(); endHold(); }}
-        onPointerCancel={endHold}
-        onKeyDown={(event) => {
-          if (event.key !== " " && event.key !== "Enter") return;
-          event.preventDefault();
-          beginHold();
-        }}
-        onKeyUp={(event) => {
-          if (event.key !== " " && event.key !== "Enter") return;
-          event.preventDefault();
-          endHold();
-        }}
-        aria-label={`${currentScene.interaction}，長按啟動動畫`}
-      >
-        <i aria-hidden="true" /><span>{currentScene.interaction}</span>
-      </button>
+      {currentScene.interaction && interactionSceneIndexes.has(activeScene) && (
+        <button
+          className={`hold-cue${interactionAvailable ? " is-available" : ""}${cursorVisible ? " is-visible" : ""}${holding ? " is-holding" : ""}`}
+          style={{ "--hold": holdProgress } as CSSProperties}
+          onPointerDown={(event) => { event.stopPropagation(); beginHold(); }}
+          onPointerUp={(event) => { event.stopPropagation(); endHold(); }}
+          onPointerCancel={endHold}
+          onKeyDown={(event) => {
+            if (event.key !== " " && event.key !== "Enter") return;
+            event.preventDefault();
+            beginHold();
+          }}
+          onKeyUp={(event) => {
+            if (event.key !== " " && event.key !== "Enter") return;
+            event.preventDefault();
+            endHold();
+          }}
+          aria-label={`${currentScene.interaction}，長按啟動動畫`}
+        >
+          <i aria-hidden="true"><b /><b /><b /></i><span>{currentScene.interaction}</span>
+        </button>
+      )}
+
+      {effectScene !== null && (
+        <Suspense fallback={null}>
+          <SceneInteraction
+            effectKey={effectKey}
+            scene={effectScene}
+            sourceVideo={effectVideo}
+            reducedMotion={reducedMotion}
+            onComplete={finishInteraction}
+          />
+        </Suspense>
+      )}
 
       {started && <div className="scroll-cue" aria-hidden="true"><span>滾動前行</span><i /></div>}
 
-      <section className="scroll-story" ref={storyRef} aria-label="熱熾葵青故事">
+      <section className="scroll-story" id="film-story" ref={storyRef} aria-label="熱熾葵青故事">
         {scenes.map((scene, index) => (
           <article className="story-scene" data-scene={scene.id} ref={(node) => { sectionRefs.current[index] = node; }} key={scene.id}>
             <span className="sr-only">{scene.place}：{scene.lines.map((line) => line.text).join(" ")}</span>
           </article>
         ))}
-        <article className="prototype-ending">
-          <div>
-            <p>兩幕試演完成</p>
-            <h2>墨仍在流動，<br />餘下七幕將沿此展開。</h2>
-            <button onClick={() => sectionRefs.current[0]?.scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth" })}>再次觀看</button>
+        <section className="finale" aria-label="相聚葵青">
+          <div className="finale-visual">
+            <div className="finale-backdrop" aria-hidden="true" />
+            <Image
+              src={assetUrl("/media/kt3.6-colour.png")}
+              alt="家人圍桌、竹棚戲台與葵青海港交織的彩墨長卷"
+              fill
+              unoptimized
+              sizes="100vw"
+            />
+            <div className="finale-grade" />
+            <div className="finale-copy">
+              <p>一城燈火，終於回到一張飯桌。</p>
+              <h2>墨脈未止，<br />人情仍在延續。</h2>
+            </div>
           </div>
-        </article>
+          <div className="finale-action">
+            <p>從山城到海港，再走一次葵青。</p>
+            <button onClick={() => sectionRefs.current[0]?.scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth" })}>探索葵青</button>
+          </div>
+        </section>
       </section>
     </main>
   );

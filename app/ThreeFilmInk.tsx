@@ -128,25 +128,24 @@ const fragmentShader = /* glsl */ `
       satellite += (body + rim * 0.22) * step(seed * 0.38, uBurst);
     }
 
-    float transitionPeak = sin(uTransition * 3.14159265);
-    float sweep = uv.x + (fibres - 0.5) * 0.34 + sin(uv.y * 5.0 + t) * 0.035;
-    float entering = smoothstep(uTransition - 0.22, uTransition + 0.08, sweep);
-    float leaving = 1.0 - smoothstep(uTransition + 0.12, uTransition + 0.42, sweep);
-    float transitionInk = entering * leaving * transitionPeak;
-    float fog = smoothstep(0.42, 0.88, fibres) * transitionPeak;
+    float transitionPeak = clamp(uTransition, 0.0, 1.0);
+    float transitionInk = smoothstep(0.08, 0.78,
+      transitionPeak + (fibres - 0.5) * 0.46 + sin(uv.y * 8.0 + t) * 0.025);
+    float fog = smoothstep(0.34, 0.86, fibres) * transitionPeak;
 
     vec3 ink = vec3(0.018, 0.034, 0.026);
     vec3 green = vec3(0.055, 0.24, 0.16);
     vec3 amber = vec3(0.72, 0.46, 0.14);
-    vec3 colour = mix(ink, green, 0.2 + (1.0 - uScene) * 0.16);
-    colour = mix(colour, amber, uScene * (wetEdge * 0.23 + burstFront * 0.1));
+    float sceneWarmth = uScene > 3.5 ? 0.72 : (uScene > 1.5 ? 0.18 : 0.48);
+    vec3 colour = mix(ink, green, 0.24 + (1.0 - sceneWarmth) * 0.12);
+    colour = mix(colour, amber, sceneWarmth * (wetEdge * 0.23 + burstFront * 0.1));
     colour = mix(colour, vec3(0.018, 0.068, 0.044), wetEdge * 0.38 + burstFront * 0.22);
 
     float alpha = holdInk * (0.27 + uHold * 0.48 + sediment * 0.13)
       + wetEdge * 0.2 + pigmentRing * 0.2 + capillary * 0.34;
     alpha = max(alpha, burst * burstLife * (0.78 + granulation * 0.12));
     alpha = max(alpha, burstFront * 0.32 + satellite * burstLife * 0.72);
-    alpha = max(alpha, transitionInk * 0.84 + fog * 0.18);
+    alpha = max(alpha, transitionInk * 0.9 + fog * 0.24);
     gl_FragColor = vec4(colour, clamp(alpha, 0.0, 0.91));
   }
 `;

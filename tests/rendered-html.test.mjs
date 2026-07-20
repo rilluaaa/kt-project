@@ -13,7 +13,7 @@ async function render() {
   );
 }
 
-test("server-renders the 熱熾葵青 two-scene film prototype", async () => {
+test("server-renders the five-scene 熱熾葵青 film journey and colour finale", async () => {
   const response = await render();
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
@@ -22,67 +22,70 @@ test("server-renders the 熱熾葵青 two-scene film prototype", async () => {
   assert.match(html, /<title>熱熾葵青｜一滴墨，穿過山城與燈火<\/title>/);
   assert.match(html, /墨色正在展開/);
   assert.match(html, /熱熾葵青故事/);
-  assert.match(html, /data-scene="mountain"/);
-  assert.match(html, /data-scene="street"/);
-  assert.match(html, /山城入墨/);
-  assert.match(html, /葵涌早茶/);
-  assert.match(html, /兩幕試演完成/);
-  assert.match(html, /餘下七幕將沿此展開/);
-  assert.doesNotMatch(html, /第一幕|第二幕|故事進度/);
+  for (const scene of ["mountain", "street", "night-craft", "harbour", "opera"]) {
+    assert.match(html, new RegExp(`data-scene="${scene}"`));
+  }
+  for (const title of ["山城入墨", "葵涌早茶", "夜工燃光", "海港成脈", "鑼鼓入海"]) {
+    assert.match(html, new RegExp(title));
+  }
+  assert.match(html, /kt3\.6-colour\.png/);
+  assert.match(html, /探索葵青/);
+  assert.doesNotMatch(html, /兩幕試演完成|餘下七幕|第一幕|第二幕|故事進度/);
 });
 
-test("ships both short-GOP scroll films and no runtime Blender world", async () => {
+test("ships five native-quality short-GOP scroll films with exact posters", async () => {
   const html = await (await render()).text();
   const source = await readFile(new URL("../app/VideoHome.tsx", import.meta.url), "utf8");
-  const files = ["kt3.1-scroll.mp4", "kt3.2-scroll.mp4"];
-  for (const file of files) {
+  for (let index = 1; index <= 5; index += 1) {
+    const file = `kt3.${index}-scroll.mp4`;
     assert.match(source, new RegExp(file.replace(".", "\\.")));
+    assert.match(html, new RegExp(`kt3\\.${index}-poster\\.png`));
     const asset = await stat(new URL(`../public/media/${file}`, import.meta.url));
-    assert.ok(asset.size > 8_000_000, `${file} should retain the high-quality source film`);
+    assert.ok(asset.size > 8_000_000, `${file} should retain the high-quality 1764px source film`);
   }
-  assert.match(html, /kt3\.1-poster\.png/);
-  assert.match(html, /kt3\.2-poster\.png/);
   await assert.rejects(stat(new URL("../public/models/ink-scroll-world.glb", import.meta.url)));
   assert.doesNotMatch(html, /ThreeMountainStage|ink-scroll-world\.glb/);
 });
 
-test("uses scroll-world blob seeking, linger pacing and a restrained transition", async () => {
+test("uses blob seeking, a long opening-frame dwell and masked film transitions", async () => {
   const source = await readFile(new URL("../app/VideoHome.tsx", import.meta.url), "utf8");
+  const ink = await readFile(new URL("../app/ThreeFilmInk.tsx", import.meta.url), "utf8");
   const css = await readFile(new URL("../app/video.css", import.meta.url), "utf8");
   assert.match(source, /function directedTimeline/);
-  assert.match(source, /const lingerEase/);
-  assert.match(source, /smoothedScroll\.current/);
+  assert.match(source, /p <= 0\.3/);
   assert.match(source, /response\.blob\(\)/);
   assert.match(source, /URL\.createObjectURL/);
   assert.match(source, /!video\.seeking/);
   assert.match(source, /currentTime = desired/);
-  assert.match(source, /transition \* 0\.34/);
-  assert.match(source, /transition-occluder/);
-  assert.match(css, /\.film-world/);
-  assert.doesNotMatch(css, /perspective: 1250px/);
-  assert.match(css, /\.watermark-veil/);
-  assert.match(css, /\.cinematic-caption/);
+  assert.match(source, /transition=\{transition\}/);
+  assert.match(ink, /transitionPeak = clamp\(uTransition/);
+  assert.match(css, /min-height: 560vh/);
+  assert.match(css, /\.transition-occluder/);
+  assert.match(css, /object-fit: contain/);
+  assert.doesNotMatch(css, /\.watermark-veil/);
 });
 
-test("long press has wet-ink progress, full-screen payoff and replay support", async () => {
+test("long press offers three replayable WebGL effects based on the live film frame", async () => {
   const page = await readFile(new URL("../app/VideoHome.tsx", import.meta.url), "utf8");
+  const effect = await readFile(new URL("../app/SceneInteraction.tsx", import.meta.url), "utf8");
   const ink = await readFile(new URL("../app/ThreeFilmInk.tsx", import.meta.url), "utf8");
-  const css = await readFile(new URL("../app/video.css", import.meta.url), "utf8");
+  assert.match(page, /new Set\(\[1, 2, 4\]\)/);
+  assert.doesNotMatch(page, /interaction: "喚醒山脈"/);
+  assert.match(page, /interaction: "沖開茶香"/);
+  assert.match(page, /interaction: "燃亮霓虹"/);
+  assert.match(page, /interaction: "點亮戲棚"/);
   assert.match(page, /const beginHold/);
   assert.match(page, /const completeHold/);
-  assert.match(page, /setBurstKey/);
-  assert.match(page, /scroll-locked/);
-  assert.match(page, /長按啟動動畫/);
-  assert.match(ink, /new THREE\.WebGLRenderer/);
+  assert.match(page, /setEffectKey/);
+  assert.match(effect, /drawImage\(sourceVideo/);
+  assert.match(effect, /new THREE\.CanvasTexture/);
+  assert.match(effect, /duration = reducedMotion \? 1200 : 4200/);
+  assert.match(effect, /uTexture/);
   assert.match(ink, /uHold/);
-  assert.match(ink, /uBurst/);
-  assert.match(ink, /uTransition/);
-  assert.match(css, /\.hold-cue/);
-  assert.match(css, /\.effect-scene-0/);
-  assert.match(css, /\.effect-scene-1/);
+  assert.match(ink, /capillary/);
 });
 
-test("keeps the original loading mark, physical ink burst and supplied soundtrack", async () => {
+test("keeps the physical opening ink and ships the replacement continuous soundtrack", async () => {
   const opening = await readFile(new URL("../app/ThreeInkOpening.tsx", import.meta.url), "utf8");
   const page = await readFile(new URL("../app/VideoHome.tsx", import.meta.url), "utf8");
   assert.match(opening, /new THREE\.WebGLRenderer/);
@@ -92,8 +95,6 @@ test("keeps the original loading mark, physical ink burst and supplied soundtrac
   assert.match(opening, /openingAlpha/);
   assert.match(page, /west-lake-wander\.mp3/);
   assert.match(page, /audio\.loop = true/);
-  assert.match(page, /西湖漫遊/);
-  assert.doesNotMatch(page, /const phrases = \[/);
   const soundtrack = await stat(new URL("../public/media/west-lake-wander.mp3", import.meta.url));
-  assert.ok(soundtrack.size > 5_000_000, "supplied BGM should be shipped at source quality");
+  assert.ok(soundtrack.size > 5_000_000, "the replacement BGM should be shipped at source quality");
 });
