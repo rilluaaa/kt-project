@@ -455,9 +455,9 @@ html.scroll-locked body {
     radial-gradient(circle at 46% 48%, rgba(5, 17, 10, calc(.28 + var(--hold) * .66)) 0 calc(var(--hold) * 58%), transparent calc(8% + var(--hold) * 67%)),
     radial-gradient(circle at 50% 52%, transparent 55%, rgba(46, 119, 79, .58) 66%, rgba(6, 25, 14, .46) 71%, transparent 78%);
   box-shadow: inset 0 0 1.1rem rgba(4, 14, 8, .46), 0 0 calc(var(--hold) * 1.8rem) rgba(22, 91, 58, .38);
-  opacity: calc(.46 + var(--hold) * .5);
-  transform: scale(calc(.9 + var(--hold) * .12)) rotate(calc(var(--hold) * 7deg));
-  transition: border-radius .2s linear;
+  opacity: calc(var(--hold) * .96);
+  transform: scale(calc(.72 + var(--hold) * .3)) rotate(calc(var(--hold) * 7deg));
+  transition: border-radius .2s linear, opacity .12s ease, transform .16s ease;
 }
 
 .hold-cue > i b {

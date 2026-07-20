@@ -30,6 +30,8 @@ const fragmentShader = /* glsl */ `
   uniform float uHold;
   uniform float uBurst;
   uniform float uScene;
+  uniform vec2 uTrail[16];
+  uniform float uTrailAge[16];
 
   float hash(vec2 p) {
     return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
@@ -82,6 +84,22 @@ const fragmentShader = /* glsl */ `
     float veins = ridge(vec2(angle * 7.2 + fibres * 2.0, radius * 74.0 - t + paper * 2.0));
     float pigment = fbm(flow * 25.0 + advection * 4.0);
     float granulation = ridge(flow * 61.0 + vec2(paper * 3.2));
+
+    float trailInk = 0.0;
+    float trailEdge = 0.0;
+    for (int trace = 0; trace < 16; trace++) {
+      float fi = float(trace);
+      vec2 traceP = (frag - uTrail[trace]) / shortest;
+      float traceLife = 1.0 - clamp(uTrailAge[trace], 0.0, 1.0);
+      float traceNoise = fbm(traceP * 76.0 + vec2(fi * 3.7, -fi * 2.3));
+      float traceRadius = mix(0.0022, 0.0068, hash(vec2(fi, 19.4)));
+      float traceBoundary = traceRadius + (traceNoise - 0.5) * 0.0045;
+      float traceBody = smoothstep(traceBoundary + 0.0028, traceBoundary - 0.0012, length(traceP));
+      float traceRim = smoothstep(0.0028, 0.00035, abs(length(traceP) - traceBoundary));
+      float drying = pow(traceLife, 1.75) * (0.52 + paper * 0.48);
+      trailInk += traceBody * drying * (0.22 + granulation * 0.18);
+      trailEdge += traceRim * drying * 0.13;
+    }
 
     float holdRadius = mix(0.006, 0.075, pow(uHold, 0.68));
     float surfaceTension = sin(angle * 8.0 + veins * 3.8) * 0.006 + sin(angle * 17.0 - pigment * 2.2) * 0.0025;
@@ -140,6 +158,7 @@ const fragmentShader = /* glsl */ `
     vec3 colour = mix(ink, green, 0.24 + (1.0 - sceneWarmth) * 0.12);
     colour = mix(colour, amber, sceneWarmth * (wetEdge * 0.23 + burstFront * 0.1));
     colour = mix(colour, vec3(0.018, 0.068, 0.044), wetEdge * 0.38 + burstFront * 0.22);
+    colour = mix(colour, ink, smoothstep(0.02, 0.34, trailInk + trailEdge));
 
     float holdPresence = smoothstep(0.012, 0.075, uHold);
     float alpha = (holdInk * (0.27 + uHold * 0.48 + sediment * 0.13)
@@ -147,6 +166,7 @@ const fragmentShader = /* glsl */ `
     alpha = max(alpha, burst * burstLife * (0.78 + granulation * 0.12));
     alpha = max(alpha, burstFront * 0.32 + satellite * burstLife * 0.72);
     alpha = max(alpha, transitionInk * 0.9 + fog * 0.24);
+    alpha = max(alpha, min(0.43, trailInk + trailEdge));
     gl_FragColor = vec4(colour, clamp(alpha, 0.0, 0.91));
   }
 `;
@@ -180,6 +200,8 @@ export default function ThreeFilmInk(props: Props) {
       uHold: { value: 0 },
       uBurst: { value: 1 },
       uScene: { value: 0 },
+      uTrail: { value: Array.from({ length: 16 }, () => new THREE.Vector2(-10000, -10000)) },
+      uTrailAge: { value: new Float32Array(16).fill(1) },
     };
     const geometry = new THREE.PlaneGeometry(2, 2);
     const material = new THREE.ShaderMaterial({ vertexShader, fragmentShader, uniforms, transparent: true, depthTest: false, depthWrite: false });
@@ -189,6 +211,9 @@ export default function ThreeFilmInk(props: Props) {
     let frame = 0;
     let seenBurst = propsRef.current.burstKey;
     let burstStarted = performance.now() - 5000;
+    const trail = Array.from({ length: 16 }, () => ({ x: -10000, y: -10000, born: -10000 }));
+    let lastTrailOrigin = { x: propsRef.current.origin.x, y: propsRef.current.origin.y };
+    let lastTrailAt = 0;
     let disposed = false;
     const resize = () => {
       const lowPower = (navigator.hardwareConcurrency || 8) <= 4;
@@ -210,6 +235,17 @@ export default function ThreeFilmInk(props: Props) {
       const scaleX = buffer.x / Math.max(1, window.innerWidth);
       const scaleY = buffer.y / Math.max(1, window.innerHeight);
       uniforms.uOrigin.value.set(current.origin.x * scaleX, (window.innerHeight - current.origin.y) * scaleY);
+      const travelled = Math.hypot(current.origin.x - lastTrailOrigin.x, current.origin.y - lastTrailOrigin.y);
+      if (current.holdProgress < 0.012 && travelled > 7 && now - lastTrailAt > 22) {
+        trail.pop();
+        trail.unshift({ x: current.origin.x, y: current.origin.y, born: now });
+        lastTrailOrigin = { x: current.origin.x, y: current.origin.y };
+        lastTrailAt = now;
+      }
+      trail.forEach((point, index) => {
+        uniforms.uTrail.value[index].set(point.x * scaleX, (window.innerHeight - point.y) * scaleY);
+        uniforms.uTrailAge.value[index] = Math.min(1, (now - point.born) / 2200);
+      });
       uniforms.uTime.value = now * 0.001;
       uniforms.uTransition.value += (current.transition - uniforms.uTransition.value) * (current.reducedMotion ? 1 : 0.095);
       uniforms.uHold.value += (current.holdProgress - uniforms.uHold.value) * (current.reducedMotion ? 1 : 0.12);

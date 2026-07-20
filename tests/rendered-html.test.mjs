@@ -99,6 +99,9 @@ test("long press offers three replayable WebGL effects based on the live film fr
   assert.match(effect, /uTexture/);
   assert.match(ink, /uHold/);
   assert.match(ink, /capillary/);
+  assert.match(ink, /uniform vec2 uTrail\[16\]/);
+  assert.match(ink, /trailInk/);
+  assert.match(ink, /\/ 2200/);
 });
 
 test("keeps the physical opening ink and ships the replacement continuous soundtrack", async () => {
