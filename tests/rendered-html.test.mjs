@@ -31,29 +31,35 @@ test("server-renders the 熱熾葵青 two-scene film prototype", async () => {
   assert.doesNotMatch(html, /第一幕|第二幕|故事進度/);
 });
 
-test("ships both scroll-scrubbed production videos and no runtime Blender world", async () => {
+test("ships both short-GOP scroll films and no runtime Blender world", async () => {
   const html = await (await render()).text();
-  const files = ["kt3.1-mountain.mp4", "kt3.2-street.mp4"];
+  const source = await readFile(new URL("../app/VideoHome.tsx", import.meta.url), "utf8");
+  const files = ["kt3.1-scroll.mp4", "kt3.2-scroll.mp4"];
   for (const file of files) {
-    assert.match(html, new RegExp(file.replace(".", "\\.")));
+    assert.match(source, new RegExp(file.replace(".", "\\.")));
     const asset = await stat(new URL(`../public/media/${file}`, import.meta.url));
-    assert.ok(asset.size > 2_000_000, `${file} should contain a production film`);
+    assert.ok(asset.size > 8_000_000, `${file} should retain the high-quality source film`);
   }
+  assert.match(html, /kt3\.1-poster\.png/);
+  assert.match(html, /kt3\.2-poster\.png/);
   await assert.rejects(stat(new URL("../public/models/ink-scroll-world.glb", import.meta.url)));
   assert.doesNotMatch(html, /ThreeMountainStage|ink-scroll-world\.glb/);
 });
 
-test("uses a damped film timeline with directed camera beats and physical transition", async () => {
+test("uses scroll-world blob seeking, linger pacing and a restrained transition", async () => {
   const source = await readFile(new URL("../app/VideoHome.tsx", import.meta.url), "utf8");
   const css = await readFile(new URL("../app/video.css", import.meta.url), "utf8");
   assert.match(source, /function directedTimeline/);
+  assert.match(source, /const lingerEase/);
   assert.match(source, /smoothedScroll\.current/);
+  assert.match(source, /response\.blob\(\)/);
+  assert.match(source, /URL\.createObjectURL/);
+  assert.match(source, /!video\.seeking/);
   assert.match(source, /currentTime = desired/);
-  assert.match(source, /--a-yaw/);
-  assert.match(source, /--b-pitch/);
+  assert.match(source, /transition \* 0\.34/);
   assert.match(source, /transition-occluder/);
   assert.match(css, /\.film-world/);
-  assert.match(css, /perspective: 1250px/);
+  assert.doesNotMatch(css, /perspective: 1250px/);
   assert.match(css, /\.watermark-veil/);
   assert.match(css, /\.cinematic-caption/);
 });

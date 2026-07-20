@@ -40,8 +40,8 @@ const scenes: Scene[] = [
     id: "mountain",
     place: "山城入墨",
     interaction: "喚醒山脈",
-    video: assetUrl("/media/kt3.1-mountain.mp4"),
-    poster: assetUrl("/ink/scene-01-mountain-city.webp"),
+    video: assetUrl("/media/kt3.1-scroll.mp4"),
+    poster: assetUrl("/media/kt3.1-poster.png"),
     lines: [
       { text: "霧穿過山脊，墨沿石縫落進城市。", start: 0.09, end: 0.34, direction: "near-left" },
       { text: "山與樓之間，葵青從海霧中醒來。", start: 0.49, end: 0.77, direction: "far-right" },
@@ -52,8 +52,8 @@ const scenes: Scene[] = [
     place: "葵涌早茶",
     interaction: "沖開茶香",
     heritage: "港式奶茶製作技藝",
-    video: assetUrl("/media/kt3.2-street.mp4"),
-    poster: assetUrl("/ink/scene-02-street-crafts.webp"),
+    video: assetUrl("/media/kt3.2-scroll.mp4"),
+    poster: assetUrl("/media/kt3.2-poster.png"),
     lines: [
       { text: "濕街接住墨線，也接住每日的腳步。", start: 0.08, end: 0.35, direction: "high-left" },
       { text: "茶香與木屑，在舊舖前交織成生活。", start: 0.5, end: 0.8, direction: "low-centre" },
@@ -76,6 +76,12 @@ const smooth = (value: number) => {
 };
 const range = (value: number, start: number, end: number) => smooth((value - start) / (end - start));
 const lerp = (a: number, b: number, amount: number) => a + (b - a) * amount;
+const lingerEase = (value: number, linger: number) => {
+  const x = clamp(value);
+  const strength = clamp(linger);
+  const centred = x - 0.5;
+  return (1 - strength) * x + strength * (4 * centred * centred * centred + 0.5);
+};
 
 function createNoise(context: AudioContext, seconds: number) {
   const buffer = context.createBuffer(1, Math.floor(context.sampleRate * seconds), context.sampleRate);
@@ -254,6 +260,7 @@ export default function VideoHome() {
   const [effectScene, setEffectScene] = useState<number | null>(null);
   const [opening, setOpening] = useState(false);
   const [videoReady, setVideoReady] = useState(0);
+  const [videoSources, setVideoSources] = useState<Array<string | null>>(() => scenes.map(() => null));
   const [inkOrigin, setInkOrigin] = useState({ x: 0, y: 0 });
   const stageRef = useRef<HTMLDivElement>(null);
   const storyRef = useRef<HTMLElement>(null);
@@ -266,7 +273,9 @@ export default function VideoHome() {
   const pointerRef = useRef({ x: 0, y: 0 });
   const cursorTimer = useRef<number | null>(null);
   const smoothedScroll = useRef(0);
+  const smoothedVideoTime = useRef(scenes.map(() => 0));
   const activeSceneRef = useRef(0);
+  const objectUrls = useRef<string[]>([]);
 
   const markVideoReady = (index: number) => {
     if (loadedVideos.current.has(index)) return;
@@ -274,23 +283,50 @@ export default function VideoHome() {
     setVideoReady(loadedVideos.current.size);
   };
 
+  /* scroll-world's key reliability rule: fetch the film as a Blob before
+     scrubbing. Blob URLs stay seekable even when a production host does not
+     expose useful byte ranges, so scroll never gets pinned to frame zero. */
   useEffect(() => {
+    let disposed = false;
+    const controllers = scenes.map(() => new AbortController());
+    scenes.forEach((scene, index) => {
+      void fetch(scene.video, { signal: controllers[index].signal })
+        .then((response) => {
+          if (!response.ok) throw new Error(`film ${index} failed`);
+          return response.blob();
+        })
+        .then((blob) => {
+          if (disposed) return;
+          const url = URL.createObjectURL(blob);
+          objectUrls.current.push(url);
+          setVideoSources((current) => current.map((source, sourceIndex) => sourceIndex === index ? url : source));
+        })
+        .catch(() => {
+          if (disposed) return;
+          setVideoSources((current) => current.map((source, sourceIndex) => sourceIndex === index ? scene.video : source));
+        });
+    });
     const fallback = window.setTimeout(() => {
-      scenes.forEach((_, index) => loadedVideos.current.add(index));
-      setVideoReady(scenes.length);
-    }, 6000);
-    return () => window.clearTimeout(fallback);
+      if (!loadedVideos.current.size) setVideoReady(1);
+    }, 7000);
+    return () => {
+      disposed = true;
+      controllers.forEach((controller) => controller.abort());
+      window.clearTimeout(fallback);
+      objectUrls.current.forEach((url) => URL.revokeObjectURL(url));
+      objectUrls.current = [];
+    };
   }, []);
 
   useEffect(() => {
     const began = performance.now();
     let displayed = 0;
     const interval = window.setInterval(() => {
-      const cap = videoReady >= scenes.length ? 99 : 91;
+      const cap = videoReady >= 1 ? 99 : 91;
       displayed = Math.min(cap, displayed + (displayed < 58 ? 2 : 1));
       setLoading(displayed);
     }, 52);
-    if (videoReady >= scenes.length) {
+    if (videoReady >= 1) {
       const delay = Math.max(0, 2500 - (performance.now() - began));
       window.setTimeout(() => {
         window.clearInterval(interval);
@@ -347,28 +383,24 @@ export default function VideoHome() {
           stage.style.setProperty("--scene-a", `${1 - blend}`);
           stage.style.setProperty("--scene-b", `${blend}`);
           stage.style.setProperty("--transition-peak", `${peak}`);
-          stage.style.setProperty("--a-yaw", `${lerp(-4.8, 4.4, s0)}deg`);
-          stage.style.setProperty("--a-pitch", `${lerp(5.2, -3.4, range(p0, 0.08, 0.88))}deg`);
-          stage.style.setProperty("--a-roll", `${lerp(-0.55, 0.45, s0)}deg`);
-          stage.style.setProperty("--a-x", `${lerp(-3.8, 3.2, s0)}vw`);
-          stage.style.setProperty("--a-y", `${lerp(3.8, -3.1, s0)}vh`);
-          stage.style.setProperty("--a-scale", `${lerp(1.08, 1.17, range(p0, 0.08, 0.78)) + peak * 0.035}`);
-          stage.style.setProperty("--b-yaw", `${lerp(5.2, -4.6, s1)}deg`);
-          stage.style.setProperty("--b-pitch", `${lerp(-3.8, 4.1, range(p1, 0.06, 0.86))}deg`);
-          stage.style.setProperty("--b-roll", `${lerp(0.45, -0.5, s1)}deg`);
-          stage.style.setProperty("--b-x", `${lerp(3.6, -3.4, s1)}vw`);
-          stage.style.setProperty("--b-y", `${lerp(-2.1, 3.4, s1)}vh`);
-          stage.style.setProperty("--b-scale", `${lerp(1.11, 1.2, range(p1, 0.08, 0.82)) + (1 - blend) * 0.025}`);
+          stage.style.setProperty("--a-x", `${lerp(-0.8, 0.55, s0)}vw`);
+          stage.style.setProperty("--a-y", `${lerp(0.7, -0.55, s0)}vh`);
+          stage.style.setProperty("--a-scale", `${lerp(1.025, 1.055, range(p0, 0.08, 0.78))}`);
+          stage.style.setProperty("--b-x", `${lerp(0.65, -0.6, s1)}vw`);
+          stage.style.setProperty("--b-y", `${lerp(-0.45, 0.65, s1)}vh`);
+          stage.style.setProperty("--b-scale", `${lerp(1.03, 1.06, range(p1, 0.08, 0.82))}`);
         }
 
-        if (now - lastVideoSeek > 32) {
+        if (now - lastVideoSeek > 16) {
           lastVideoSeek = now;
           [p0, p1].forEach((progress, index) => {
             const video = videoRefs.current[index];
             if (!video || !Number.isFinite(video.duration) || video.duration <= 0) return;
-            const desired = video.duration * directedTimeline(progress);
-            if (Math.abs(video.currentTime - desired) > 0.024) {
-              try { video.currentTime = desired; } catch { /* metadata may still be settling */ }
+            const mapped = directedTimeline(lingerEase(progress, index === 0 ? 0.24 : 0.3));
+            smoothedVideoTime.current[index] += (mapped - smoothedVideoTime.current[index]) * (reducedMotion ? 1 : 0.18);
+            const desired = video.duration * smoothedVideoTime.current[index];
+            if (!video.seeking && Math.abs(video.currentTime - desired) > 0.018) {
+              try { video.currentTime = desired; } catch { /* blob metadata may still be settling */ }
             }
           });
         }
@@ -545,13 +577,12 @@ export default function VideoHome() {
                 playsInline
                 preload="auto"
                 poster={scene.poster}
+                src={videoSources[index] ?? undefined}
                 onLoadedMetadata={() => markVideoReady(index)}
                 onLoadedData={() => markVideoReady(index)}
                 onCanPlay={() => markVideoReady(index)}
                 onError={() => markVideoReady(index)}
-              >
-                <source src={scene.video} type="video/mp4" />
-              </video>
+              />
               <div className="film-grade" />
               <div className="watermark-veil" />
             </div>
@@ -563,7 +594,7 @@ export default function VideoHome() {
         <div className="paper-fibres" />
         <Suspense fallback={null}>
           <ThreeFilmInk
-            transition={transition}
+            transition={transition * 0.34}
             holdProgress={holdProgress}
             burstKey={burstKey}
             origin={inkOrigin}

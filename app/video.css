@@ -113,41 +113,31 @@ html.scroll-locked body { overflow: hidden; overscroll-behavior: none; }
 
 .video-experience .brand { letter-spacing: .16em; }
 
-/* The videos already contain authored camera motion. This stage gives the
-   scroll timeline weight, elevation changes and restrained perspective. */
+/* The authored film owns the camera. The scroll-world layer only adds a very
+   small overscan drift; rotating the whole raster would soften and distort it. */
 .film-world {
   --scene-a: 1;
   --scene-b: 0;
   --transition-peak: 0;
   --pointer-x: 0vw;
   --pointer-y: 0vh;
-  --a-yaw: -4.8deg;
-  --a-pitch: 5.2deg;
-  --a-roll: -.55deg;
-  --a-x: -3.8vw;
-  --a-y: 3.8vh;
-  --a-scale: 1.08;
-  --b-yaw: 5.2deg;
-  --b-pitch: -3.8deg;
-  --b-roll: .45deg;
-  --b-x: 3.6vw;
-  --b-y: -2.1vh;
-  --b-scale: 1.11;
+  --a-x: -.8vw;
+  --a-y: .7vh;
+  --a-scale: 1.025;
+  --b-x: .65vw;
+  --b-y: -.45vh;
+  --b-scale: 1.03;
   position: fixed;
   z-index: 0;
   inset: 0;
   overflow: hidden;
   background: #111d17;
-  perspective: 1250px;
-  perspective-origin: 50% 48%;
   pointer-events: none;
-  transform-style: preserve-3d;
 }
 
 .film-scene {
   position: absolute;
-  inset: -10vh -10vw;
-  transform-style: preserve-3d;
+  inset: 0;
   will-change: opacity, transform;
 }
 
@@ -155,7 +145,6 @@ html.scroll-locked body { overflow: hidden; overscroll-behavior: none; }
   opacity: var(--scene-a);
   transform:
     translate3d(calc(var(--a-x) + var(--pointer-x)), calc(var(--a-y) + var(--pointer-y)), 0)
-    rotateX(var(--a-pitch)) rotateY(var(--a-yaw)) rotateZ(var(--a-roll))
     scale(var(--a-scale));
 }
 
@@ -163,28 +152,28 @@ html.scroll-locked body { overflow: hidden; overscroll-behavior: none; }
   opacity: var(--scene-b);
   transform:
     translate3d(calc(var(--b-x) + var(--pointer-x)), calc(var(--b-y) + var(--pointer-y)), 0)
-    rotateX(var(--b-pitch)) rotateY(var(--b-yaw)) rotateZ(var(--b-roll))
     scale(var(--b-scale));
 }
 
 .film-plane {
   position: absolute;
-  inset: -4.5%;
+  inset: 0;
   overflow: hidden;
   background: #d8d0bc;
-  box-shadow: 0 0 7rem rgba(3, 10, 6, .42);
+  box-shadow: 0 0 3rem rgba(3, 10, 6, .24);
   transform: translateZ(0);
 }
 
 .scene-film {
   position: absolute;
-  inset: -5.5%;
-  width: 111%;
-  height: 111%;
+  inset: -8.5%;
+  width: 117%;
+  height: 117%;
+  max-width: none;
   object-fit: cover;
   object-position: center;
-  filter: contrast(1.06) saturate(.88) brightness(.96);
-  transform: translateZ(0) scale(1.018);
+  filter: contrast(1.015) saturate(1.02) brightness(1.015);
+  transform: translateZ(0);
 }
 
 .film-grade {
@@ -192,20 +181,19 @@ html.scroll-locked body { overflow: hidden; overscroll-behavior: none; }
   z-index: 2;
   inset: 0;
   background:
-    radial-gradient(ellipse at 23% 42%, rgba(31, 104, 74, .22), transparent 35%),
-    radial-gradient(ellipse at 76% 68%, rgba(215, 155, 61, .09), transparent 28%),
-    linear-gradient(180deg, rgba(238, 233, 220, .04), transparent 30%, transparent 67%, rgba(6, 14, 9, .18)),
-    radial-gradient(ellipse at center, transparent 55%, rgba(3, 10, 6, .2));
-  mix-blend-mode: multiply;
+    radial-gradient(ellipse at 23% 42%, rgba(38, 116, 83, .075), transparent 38%),
+    radial-gradient(ellipse at 76% 68%, rgba(225, 169, 78, .055), transparent 30%),
+    linear-gradient(180deg, rgba(238, 233, 220, .018), transparent 70%, rgba(6, 14, 9, .045));
+  mix-blend-mode: soft-light;
+  opacity: .72;
 }
 
 .film-scene--1 .film-grade {
   background:
-    radial-gradient(ellipse at 30% 48%, rgba(25, 92, 64, .24), transparent 38%),
-    radial-gradient(ellipse at 76% 52%, rgba(231, 170, 69, .19), transparent 26%),
-    linear-gradient(180deg, rgba(238, 233, 220, .02), transparent 56%, rgba(4, 13, 8, .2)),
-    radial-gradient(ellipse at center, transparent 58%, rgba(2, 9, 5, .21));
-  mix-blend-mode: multiply;
+    radial-gradient(ellipse at 30% 48%, rgba(29, 103, 72, .08), transparent 40%),
+    radial-gradient(ellipse at 76% 52%, rgba(231, 170, 69, .075), transparent 28%),
+    linear-gradient(180deg, rgba(238, 233, 220, .012), transparent 62%, rgba(4, 13, 8, .05));
+  mix-blend-mode: soft-light;
 }
 
 /* The fixed bottom-right export mark is kept outside the visible crop and
@@ -215,14 +203,17 @@ html.scroll-locked body { overflow: hidden; overscroll-behavior: none; }
   z-index: 4;
   right: -2%;
   bottom: -3%;
-  width: 22%;
-  height: 21%;
+  width: 28%;
+  height: 28%;
   background:
-    radial-gradient(ellipse at 74% 74%, rgba(18, 37, 27, .7), rgba(31, 82, 57, .28) 31%, transparent 67%),
-    radial-gradient(ellipse at 88% 82%, rgba(13, 22, 17, .8), transparent 48%);
-  filter: blur(9px);
-  mix-blend-mode: multiply;
-  opacity: .72;
+    radial-gradient(ellipse at 82% 82%, rgba(20, 41, 30, .66), rgba(31, 82, 57, .28) 34%, rgba(18, 35, 27, .08) 58%, transparent 76%),
+    radial-gradient(ellipse at 94% 88%, rgba(12, 23, 17, .72), transparent 54%);
+  -webkit-backdrop-filter: blur(18px) saturate(.78);
+  backdrop-filter: blur(18px) saturate(.78);
+  filter: blur(4px);
+  -webkit-mask-image: radial-gradient(ellipse at 88% 88%, #000 0 34%, rgba(0, 0, 0, .92) 46%, rgba(0, 0, 0, .4) 62%, transparent 78%);
+  mask-image: radial-gradient(ellipse at 88% 88%, #000 0 34%, rgba(0, 0, 0, .92) 46%, rgba(0, 0, 0, .4) 62%, transparent 78%);
+  opacity: .94;
   animation: film-veil 7s ease-in-out infinite alternate;
 }
 
@@ -230,7 +221,7 @@ html.scroll-locked body { overflow: hidden; overscroll-behavior: none; }
   position: absolute;
   z-index: 5;
   inset: -20%;
-  opacity: .22;
+  opacity: .11;
   pointer-events: none;
   will-change: transform;
 }
@@ -260,8 +251,8 @@ html.scroll-locked body { overflow: hidden; overscroll-behavior: none; }
   position: absolute;
   z-index: 8;
   inset: -14%;
-  opacity: var(--transition-peak);
-  filter: blur(18px);
+  opacity: calc(var(--transition-peak) * .32);
+  filter: blur(24px);
   mix-blend-mode: multiply;
   transform: translate3d(calc((var(--scene-b) - .5) * 46vw), calc((.5 - var(--scene-b)) * 8vh), 260px) scale(calc(.72 + var(--transition-peak) * .62));
 }
@@ -288,7 +279,7 @@ html.scroll-locked body { overflow: hidden; overscroll-behavior: none; }
     radial-gradient(circle at 70% 60%, rgba(238, 233, 220, .25) 0 .45px, transparent .72px);
   background-size: 9px 11px, 13px 15px;
   mix-blend-mode: overlay;
-  opacity: .28;
+  opacity: .12;
   transform: translateZ(320px);
 }
 
