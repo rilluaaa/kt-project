@@ -32,6 +32,9 @@ test("server-renders the five-scene 熱熾葵青 film journey and colour finale"
   assert.match(html, /木屑隨刻刀落下，舊舖把手藝留在街角。/);
   assert.match(html, /kt3\.6-colour\.png/);
   assert.match(html, /探索葵青/);
+  assert.match(html, /山海相接/);
+  assert.match(html, /工藝在場/);
+  assert.match(html, /燈火相聚/);
   assert.doesNotMatch(html, /兩幕試演完成|餘下七幕|第一幕|第二幕|故事進度/);
 });
 
@@ -54,9 +57,14 @@ test("uses blob seeking, a brief opening beat and masked film transitions", asyn
   const ink = await readFile(new URL("../app/ThreeFilmInk.tsx", import.meta.url), "utf8");
   const css = await readFile(new URL("../app/video.css", import.meta.url), "utf8");
   assert.match(source, /function directedTimeline/);
-  assert.match(source, /p <= 0\.032/);
+  assert.match(source, /const entryFrame = Math\.max\(0, motionStart - 0\.012\)/);
+  assert.match(source, /const startVelocity = 0\.68/);
+  assert.doesNotMatch(source, /p <= 0\.032/);
   assert.match(source, /const motionStarts = \[0\.293, 0\.205, 0\.462, 0\.294, 0\.198\]/);
   assert.match(source, /response\.blob\(\)/);
+  assert.match(source, /Promise\.all\(indexes\.map/);
+  assert.match(source, /loadedVideos\.current\.size === scenes\.length/);
+  assert.match(source, /preload="auto"/);
   assert.match(source, /URL\.createObjectURL/);
   assert.match(source, /!video\.seeking/);
   assert.match(source, /currentTime = desired/);
@@ -76,8 +84,12 @@ test("keeps captions monochrome, removes side labels and holds one seamless fina
   assert.match(page, /film-scene--final/);
   assert.match(page, /finaleFilmRef/);
   assert.match(page, /caption\.scene\.id === "street" \? 0 : 1/);
+  assert.match(page, /className="explore-page"/);
+  assert.match(page, /className="explore-button"/);
   assert.match(css, /\.video-experience \.heritage \{[\s\S]*?color: #050807/);
   assert.match(css, /\.finale-film-image \{[\s\S]*?object-fit: cover/);
+  assert.match(css, /\.explore-page \{[\s\S]*?background:/);
+  assert.match(css, /\.explore-button \{[\s\S]*?background: #f5f2e8;[\s\S]*?color: #06100b/);
   assert.doesNotMatch(css, /\.finale-backdrop/);
 });
 
@@ -99,9 +111,10 @@ test("long press offers three replayable WebGL effects based on the live film fr
   assert.match(effect, /uTexture/);
   assert.match(ink, /uHold/);
   assert.match(ink, /capillary/);
-  assert.match(ink, /uniform vec2 uTrail\[16\]/);
+  assert.match(ink, /uniform vec2 uTrail\[20\]/);
   assert.match(ink, /trailInk/);
-  assert.match(ink, /\/ 2200/);
+  assert.match(ink, /distanceToStroke/);
+  assert.match(ink, /\/ 2600/);
 });
 
 test("keeps the physical opening ink and ships the replacement continuous soundtrack", async () => {

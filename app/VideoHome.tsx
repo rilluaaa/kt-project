@@ -150,10 +150,13 @@ const motionStarts = [0.293, 0.205, 0.462, 0.294, 0.198];
 function directedTimeline(progress: number, sceneIndex: number) {
   const p = clamp(progress);
   const motionStart = motionStarts[sceneIndex] ?? 0.2;
-  if (p <= 0.032) return lerp(0, 0.003, smooth(p / 0.032));
-  if (p <= 0.085) return lerp(0.003, motionStart + 0.012, smooth((p - 0.032) / 0.053));
-  if (p <= 0.88) return lerp(motionStart + 0.012, 0.94, smooth((p - 0.085) / 0.795));
-  return lerp(0.94, 0.995, smooth((p - 0.88) / 0.12));
+  const entryFrame = Math.max(0, motionStart - 0.012);
+  const startVelocity = 0.68;
+  const endVelocity = 0.58;
+  const curved = (-2 * p ** 3 + 3 * p ** 2)
+    + (p ** 3 - 2 * p ** 2 + p) * startVelocity
+    + (p ** 3 - p ** 2) * endVelocity;
+  return lerp(entryFrame, 0.995, curved);
 }
 
 export default function VideoHome() {
@@ -166,7 +169,7 @@ export default function VideoHome() {
   const [muted, setMuted] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
   const [opening, setOpening] = useState(false);
-  const [firstVideoReady, setFirstVideoReady] = useState(false);
+  const [assetsReady, setAssetsReady] = useState(false);
   const [videoSources, setVideoSources] = useState<Array<string | null>>(() => scenes.map(() => null));
   const [cursorVisible, setCursorVisible] = useState(false);
   const [holdProgress, setHoldProgress] = useState(0);
@@ -184,6 +187,7 @@ export default function VideoHome() {
   const finaleFilmRef = useRef<HTMLDivElement>(null);
   const videoRefs = useRef<Array<HTMLVideoElement | null>>([]);
   const loadedVideos = useRef(new Set<number>());
+  const fetchProgress = useRef(scenes.map(() => 0));
   const audioRef = useRef<AudioEngine | null>(null);
   const holdFrame = useRef<number | null>(null);
   const holdBegan = useRef(0);
@@ -193,82 +197,89 @@ export default function VideoHome() {
   const activeSceneRef = useRef(0);
   const loadingBegan = useRef(0);
 
-  const markVideoReady = (index: number) => {
-    if (loadedVideos.current.has(index)) return;
-    loadedVideos.current.add(index);
-    if (index === 0) setFirstVideoReady(true);
-  };
+  const refreshLoading = useCallback(() => {
+    const downloaded = fetchProgress.current.reduce((sum, value) => sum + value, 0) / scenes.length;
+    const decoded = loadedVideos.current.size / scenes.length;
+    setLoading(Math.min(100, Math.floor(downloaded * 94 + decoded * 6)));
+  }, []);
 
-  /* Each source becomes a local Blob before it is scrubbed. Only the first two
-     are requested at the gate; later chapters are warmed after entry. */
+  const markVideoReady = useCallback((index: number) => {
+    if (loadedVideos.current.has(index)) return;
+    smoothedVideoTime.current[index] = Math.max(0, motionStarts[index] - 0.012);
+    loadedVideos.current.add(index);
+    refreshLoading();
+    if (loadedVideos.current.size === scenes.length) setAssetsReady(true);
+  }, [refreshLoading]);
+
+  const warmVideo = useCallback((index: number, video: HTMLVideoElement) => {
+    if (loadedVideos.current.has(index) || !Number.isFinite(video.duration) || video.duration <= 0) return;
+    const entry = video.duration * Math.max(0, motionStarts[index] - 0.012);
+    if (Math.abs(video.currentTime - entry) > 0.025) {
+      try { video.currentTime = entry; } catch { /* Metadata can settle one event later. */ }
+      return;
+    }
+    markVideoReady(index);
+  }, [markVideoReady]);
+
+  /* Download every film into a seekable Blob and decode its entry frame while
+     the gate is still visible. The journey never has to fetch while moving. */
   useEffect(() => {
     let disposed = false;
-    const indexes = [0, 1];
+    const indexes = scenes.map((_, index) => index);
     const controllers = indexes.map(() => new AbortController());
     const urls: string[] = [];
     loadingBegan.current = performance.now();
+    fetchProgress.current.fill(0);
     const fetchFilm = async (index: number, signal: AbortSignal) => {
       try {
         const response = await fetch(scenes[index].video, { signal });
         if (!response.ok) throw new Error(`film ${index} failed`);
-        const blob = await response.blob();
+        const total = Number(response.headers.get("content-length")) || 0;
+        let blob: Blob;
+        if (response.body) {
+          const reader = response.body.getReader();
+          const chunks: Uint8Array[] = [];
+          let received = 0;
+          let reported = 0;
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            chunks.push(value);
+            received += value.byteLength;
+            const next = total > 0 ? Math.min(0.99, received / total) : Math.min(0.9, reported + 0.015);
+            if (next - reported >= 0.012) {
+              reported = next;
+              fetchProgress.current[index] = next;
+              refreshLoading();
+            }
+          }
+          blob = new Blob(chunks, { type: response.headers.get("content-type") ?? "video/mp4" });
+        } else {
+          blob = await response.blob();
+        }
         if (disposed) return;
+        fetchProgress.current[index] = 1;
+        refreshLoading();
         const url = URL.createObjectURL(blob);
         urls.push(url);
         setVideoSources((current) => current.map((source, sourceIndex) => sourceIndex === index ? url : source));
       } catch {
         if (disposed) return;
+        fetchProgress.current[index] = 1;
+        refreshLoading();
         setVideoSources((current) => current.map((source, sourceIndex) => sourceIndex === index ? scenes[index].video : source));
       }
     };
-    void (async () => {
-      for (let position = 0; position < indexes.length; position += 1) {
-        await fetchFilm(indexes[position], controllers[position].signal);
-      }
-    })();
-    const fallback = window.setTimeout(() => setFirstVideoReady(true), 9000);
-    return () => {
-      disposed = true;
-      controllers.forEach((controller) => controller.abort());
-      window.clearTimeout(fallback);
-      urls.forEach((url) => URL.revokeObjectURL(url));
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!started) return;
-    let disposed = false;
-    const indexes = [2, 3, 4];
-    const controllers = indexes.map(() => new AbortController());
-    const urls: string[] = [];
-    const fetchFilm = async (index: number, signal: AbortSignal) => {
-      try {
-        const response = await fetch(scenes[index].video, { signal });
-        if (!response.ok) throw new Error(`film ${index} failed`);
-        const blob = await response.blob();
-        if (disposed) return;
-        const url = URL.createObjectURL(blob);
-        urls.push(url);
-        setVideoSources((current) => current.map((source, sourceIndex) => sourceIndex === index ? url : source));
-      } catch {
-        if (disposed) return;
-        setVideoSources((current) => current.map((source, sourceIndex) => sourceIndex === index ? scenes[index].video : source));
-      }
-    };
-    void (async () => {
-      for (let position = 0; position < indexes.length; position += 1) {
-        await fetchFilm(indexes[position], controllers[position].signal);
-      }
-    })();
+    void Promise.all(indexes.map((index, position) => fetchFilm(index, controllers[position].signal)));
     return () => {
       disposed = true;
       controllers.forEach((controller) => controller.abort());
       urls.forEach((url) => URL.revokeObjectURL(url));
     };
-  }, [started]);
+  }, [refreshLoading]);
 
   useEffect(() => {
-    if (firstVideoReady) {
+    if (assetsReady) {
       const delay = Math.max(0, 1750 - (performance.now() - loadingBegan.current));
       const finish = window.setTimeout(() => {
         setLoading(100);
@@ -276,11 +287,7 @@ export default function VideoHome() {
       }, delay);
       return () => window.clearTimeout(finish);
     }
-    const interval = window.setInterval(() => {
-      setLoading((value) => Math.min(92, value + (value < 56 ? 2 : 1)));
-    }, 56);
-    return () => window.clearInterval(interval);
-  }, [firstVideoReady]);
+  }, [assetsReady]);
 
   useEffect(() => {
     const media = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -553,12 +560,12 @@ export default function VideoHome() {
                 className="scene-film"
                 muted
                 playsInline
-                preload={index < 2 ? "auto" : "metadata"}
+                preload="auto"
                 poster={scene.poster}
                 src={videoSources[index] ?? undefined}
-                onLoadedMetadata={() => markVideoReady(index)}
-                onLoadedData={() => markVideoReady(index)}
-                onCanPlay={() => markVideoReady(index)}
+                onLoadedData={(event) => warmVideo(index, event.currentTarget)}
+                onCanPlay={(event) => warmVideo(index, event.currentTarget)}
+                onSeeked={() => markVideoReady(index)}
                 onError={() => markVideoReady(index)}
               />
               <div className="film-grade" />
@@ -662,10 +669,25 @@ export default function VideoHome() {
               <h2>墨脈未止，<br />人情仍在延續。</h2>
             </div>
           </div>
-          <div className="finale-action">
-            <p>從山城到海港，再走一次葵青。</p>
-            <button onClick={() => sectionRefs.current[0]?.scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth" })}>探索葵青</button>
-          </div>
+          <section className="explore-page" aria-labelledby="explore-title">
+            <div className="explore-wash" aria-hidden="true"><i /><i /><i /></div>
+            <div className="explore-intro">
+              <p>山、城、海與人情，仍有更多路徑等待展開。</p>
+              <h2 id="explore-title">沿着墨脈，<br />再看葵青。</h2>
+              <button
+                className="explore-button"
+                onClick={() => sectionRefs.current[0]?.scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth" })}
+              >
+                <span>探索葵青</span><b aria-hidden="true">→</b>
+              </button>
+            </div>
+            <div className="explore-notes" aria-label="葵青探索方向">
+              <article><small>山海相接</small><h3>由石梨山俯瞰港灣</h3><p>沿高低起伏的城市線，重新看見山勢、屋邨與海港如何相連。</p></article>
+              <article><small>工藝在場</small><h3>走進街巷與舊舖</h3><p>從一杯奶茶、一張木枱到一筆霓虹，細看仍在日常延續的手藝。</p></article>
+              <article><small>燈火相聚</small><h3>聽見社區的節奏</h3><p>戲棚、鑼鼓與飯桌，記住人們在同一片燈火下相遇的時刻。</p></article>
+            </div>
+            <p className="explore-signoff">熱熾葵青 · 一滴墨，穿過山城與燈火</p>
+          </section>
         </section>
       </section>
     </main>

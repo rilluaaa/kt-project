@@ -30,8 +30,8 @@ const fragmentShader = /* glsl */ `
   uniform float uHold;
   uniform float uBurst;
   uniform float uScene;
-  uniform vec2 uTrail[16];
-  uniform float uTrailAge[16];
+  uniform vec2 uTrail[20];
+  uniform float uTrailAge[20];
 
   float hash(vec2 p) {
     return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
@@ -87,18 +87,24 @@ const fragmentShader = /* glsl */ `
 
     float trailInk = 0.0;
     float trailEdge = 0.0;
-    for (int trace = 0; trace < 16; trace++) {
+    vec2 normalizedFrag = frag / shortest;
+    for (int trace = 0; trace < 19; trace++) {
       float fi = float(trace);
-      vec2 traceP = (frag - uTrail[trace]) / shortest;
-      float traceLife = 1.0 - clamp(uTrailAge[trace], 0.0, 1.0);
-      float traceNoise = fbm(traceP * 76.0 + vec2(fi * 3.7, -fi * 2.3));
-      float traceRadius = mix(0.0022, 0.0068, hash(vec2(fi, 19.4)));
-      float traceBoundary = traceRadius + (traceNoise - 0.5) * 0.0045;
-      float traceBody = smoothstep(traceBoundary + 0.0028, traceBoundary - 0.0012, length(traceP));
-      float traceRim = smoothstep(0.0028, 0.00035, abs(length(traceP) - traceBoundary));
+      vec2 traceA = uTrail[trace] / shortest;
+      vec2 traceB = uTrail[trace + 1] / shortest;
+      vec2 segment = traceB - traceA;
+      float along = clamp(dot(normalizedFrag - traceA, segment) / max(0.000001, dot(segment, segment)), 0.0, 1.0);
+      float distanceToStroke = length(normalizedFrag - (traceA + segment * along));
+      float traceLife = 1.0 - clamp(mix(uTrailAge[trace], uTrailAge[trace + 1], along), 0.0, 1.0);
+      float validStroke = step(uTrailAge[trace], 0.995) * step(uTrailAge[trace + 1], 0.995);
+      float traceNoise = noise(frag * 0.034 + vec2(fi * 9.7, -fi * 5.3));
+      float traceRadius = mix(0.0046, 0.0092, hash(vec2(fi, 19.4)));
+      float traceBoundary = traceRadius + (traceNoise - 0.5) * 0.0036;
+      float traceBody = smoothstep(traceBoundary + 0.0034, traceBoundary - 0.0014, distanceToStroke);
+      float traceRim = smoothstep(0.0032, 0.0004, abs(distanceToStroke - traceBoundary));
       float drying = pow(traceLife, 1.75) * (0.52 + paper * 0.48);
-      trailInk += traceBody * drying * (0.22 + granulation * 0.18);
-      trailEdge += traceRim * drying * 0.13;
+      trailInk += traceBody * drying * validStroke * (0.31 + granulation * 0.21);
+      trailEdge += traceRim * drying * validStroke * 0.17;
     }
 
     float holdRadius = mix(0.006, 0.075, pow(uHold, 0.68));
@@ -166,7 +172,7 @@ const fragmentShader = /* glsl */ `
     alpha = max(alpha, burst * burstLife * (0.78 + granulation * 0.12));
     alpha = max(alpha, burstFront * 0.32 + satellite * burstLife * 0.72);
     alpha = max(alpha, transitionInk * 0.9 + fog * 0.24);
-    alpha = max(alpha, min(0.43, trailInk + trailEdge));
+    alpha = max(alpha, min(0.53, trailInk + trailEdge));
     gl_FragColor = vec4(colour, clamp(alpha, 0.0, 0.91));
   }
 `;
@@ -200,8 +206,8 @@ export default function ThreeFilmInk(props: Props) {
       uHold: { value: 0 },
       uBurst: { value: 1 },
       uScene: { value: 0 },
-      uTrail: { value: Array.from({ length: 16 }, () => new THREE.Vector2(-10000, -10000)) },
-      uTrailAge: { value: new Float32Array(16).fill(1) },
+      uTrail: { value: Array.from({ length: 20 }, () => new THREE.Vector2(-10000, -10000)) },
+      uTrailAge: { value: new Float32Array(20).fill(1) },
     };
     const geometry = new THREE.PlaneGeometry(2, 2);
     const material = new THREE.ShaderMaterial({ vertexShader, fragmentShader, uniforms, transparent: true, depthTest: false, depthWrite: false });
@@ -211,7 +217,7 @@ export default function ThreeFilmInk(props: Props) {
     let frame = 0;
     let seenBurst = propsRef.current.burstKey;
     let burstStarted = performance.now() - 5000;
-    const trail = Array.from({ length: 16 }, () => ({ x: -10000, y: -10000, born: -10000 }));
+    const trail = Array.from({ length: 20 }, () => ({ x: -10000, y: -10000, born: -10000 }));
     let lastTrailOrigin = { x: propsRef.current.origin.x, y: propsRef.current.origin.y };
     let lastTrailAt = 0;
     let disposed = false;
@@ -236,7 +242,7 @@ export default function ThreeFilmInk(props: Props) {
       const scaleY = buffer.y / Math.max(1, window.innerHeight);
       uniforms.uOrigin.value.set(current.origin.x * scaleX, (window.innerHeight - current.origin.y) * scaleY);
       const travelled = Math.hypot(current.origin.x - lastTrailOrigin.x, current.origin.y - lastTrailOrigin.y);
-      if (current.holdProgress < 0.012 && travelled > 7 && now - lastTrailAt > 22) {
+      if (current.holdProgress < 0.012 && travelled > 4 && now - lastTrailAt > 16) {
         trail.pop();
         trail.unshift({ x: current.origin.x, y: current.origin.y, born: now });
         lastTrailOrigin = { x: current.origin.x, y: current.origin.y };
@@ -244,7 +250,7 @@ export default function ThreeFilmInk(props: Props) {
       }
       trail.forEach((point, index) => {
         uniforms.uTrail.value[index].set(point.x * scaleX, (window.innerHeight - point.y) * scaleY);
-        uniforms.uTrailAge.value[index] = Math.min(1, (now - point.born) / 2200);
+        uniforms.uTrailAge.value[index] = Math.min(1, (now - point.born) / 2600);
       });
       uniforms.uTime.value = now * 0.001;
       uniforms.uTransition.value += (current.transition - uniforms.uTransition.value) * (current.reducedMotion ? 1 : 0.095);

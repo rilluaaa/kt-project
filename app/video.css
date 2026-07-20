@@ -497,13 +497,13 @@ html.scroll-locked body {
 .video-experience .scroll-story { position: relative; z-index: 2; }
 .story-scene { position: relative; min-height: 560vh; pointer-events: none; }
 
-/* Finale holds the coloured sixth painting, then exposes a final action only
-   after another long scroll gesture. */
+/* The sixth painting completes the film, then a separate green page rises from
+   below so the final action feels like a new destination. */
 .finale {
   position: relative;
   z-index: 30;
-  min-height: 260vh;
-  overflow: clip;
+  min-height: 0;
+  overflow: visible;
   background: transparent;
   color: var(--paper);
 }
@@ -540,7 +540,7 @@ html.scroll-locked body {
 }
 
 .finale-copy p,
-.finale-action p {
+.explore-intro > p {
   margin: 0 0 1rem;
   color: var(--amber-pale);
   font-family: var(--serif);
@@ -557,35 +557,132 @@ html.scroll-locked body {
   line-height: 1.2;
 }
 
-.finale-action {
-  position: absolute;
-  z-index: 5;
-  right: 0;
-  bottom: 15vh;
-  left: 0;
-  display: grid;
-  place-items: center;
-  text-align: center;
-}
-
-.finale-action button {
+.explore-page {
   position: relative;
-  width: 9.5rem;
-  height: 9.5rem;
-  border: 0;
-  border-radius: 52% 48% 61% 39% / 44% 58% 42% 56%;
-  cursor: pointer;
-  background: radial-gradient(circle at 45% 42%, rgba(50, 123, 84, .92), rgba(5, 29, 17, .97) 70%);
-  color: var(--paper);
-  font-family: var(--serif);
-  letter-spacing: .2em;
-  box-shadow: 0 0 2rem rgba(38, 125, 83, .3), inset 0 0 1.2rem rgba(230, 194, 118, .13);
-  transition: transform .55s cubic-bezier(.16, 1, .3, 1), box-shadow .55s ease;
+  z-index: 6;
+  display: grid;
+  min-height: 118vh;
+  overflow: hidden;
+  grid-template-columns: minmax(0, 1fr) minmax(23rem, .88fr);
+  grid-template-rows: 1fr auto;
+  align-items: center;
+  gap: clamp(3rem, 8vw, 10rem);
+  padding: clamp(8rem, 15vh, 12rem) clamp(2rem, 7vw, 8rem) clamp(3rem, 7vh, 5rem);
+  background:
+    linear-gradient(132deg, rgba(8, 42, 28, .98), rgba(24, 91, 62, .97) 48%, rgba(10, 53, 36, .99)),
+    #103e2c;
+  color: #f3f0e5;
+  isolation: isolate;
 }
 
-.finale-action button:hover {
-  transform: scale(1.06) rotate(-2deg);
-  box-shadow: 0 0 3.5rem rgba(50, 147, 99, .48), inset 0 0 1.5rem rgba(230, 194, 118, .22);
+.explore-page::before {
+  position: absolute;
+  z-index: 0;
+  top: -13vh;
+  right: -4%;
+  left: -4%;
+  height: 20vh;
+  background: linear-gradient(180deg, transparent, rgba(13, 57, 39, .95) 68%, #103e2c);
+  content: "";
+  filter: blur(10px);
+}
+
+.explore-wash {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  overflow: hidden;
+  opacity: .5;
+  pointer-events: none;
+}
+
+.explore-wash i {
+  position: absolute;
+  display: block;
+  border: 1px solid rgba(241, 237, 223, .13);
+  border-radius: 46% 54% 61% 39% / 57% 43% 57% 43%;
+  background: radial-gradient(ellipse, rgba(53, 132, 91, .24), rgba(5, 39, 25, .08) 67%, transparent 72%);
+  filter: blur(1px);
+}
+
+.explore-wash i:nth-child(1) { top: -18vw; left: -10vw; width: 58vw; height: 50vw; transform: rotate(19deg); }
+.explore-wash i:nth-child(2) { right: -21vw; bottom: -16vw; width: 65vw; height: 56vw; transform: rotate(-27deg); }
+.explore-wash i:nth-child(3) { top: 28%; left: 42%; width: 31vw; height: 24vw; opacity: .55; transform: rotate(8deg); }
+
+.explore-intro,
+.explore-notes,
+.explore-signoff { position: relative; z-index: 2; }
+
+.explore-intro { max-width: 46rem; }
+
+.explore-intro > p {
+  max-width: 34rem;
+  color: rgba(242, 239, 226, .74);
+  line-height: 1.8;
+}
+
+.explore-intro h2 {
+  margin: 0 0 clamp(2.2rem, 5vh, 4rem);
+  font-family: var(--serif);
+  font-size: clamp(3.2rem, 7.5vw, 8rem);
+  font-weight: 400;
+  letter-spacing: .06em;
+  line-height: 1.08;
+  text-wrap: balance;
+}
+
+.explore-button {
+  display: inline-flex;
+  width: min(19rem, 80vw);
+  min-height: 4.5rem;
+  align-items: center;
+  justify-content: space-between;
+  border: 1px solid rgba(255, 255, 255, .96);
+  border-radius: 0;
+  cursor: pointer;
+  padding: 0 1.55rem;
+  background: #f5f2e8;
+  color: #06100b;
+  font-family: var(--sans);
+  font-size: .82rem;
+  font-weight: 600;
+  letter-spacing: .18em;
+  box-shadow: 0 1.2rem 3rem rgba(2, 23, 14, .22);
+  transition: background .35s ease, color .35s ease, transform .45s cubic-bezier(.16, 1, .3, 1);
+}
+
+.explore-button b { font-size: 1.35rem; font-weight: 400; transition: transform .35s ease; }
+
+.explore-button:hover {
+  background: #07130d;
+  color: #f5f2e8;
+  transform: translateY(-3px);
+}
+
+.explore-button:hover b { transform: translateX(.35rem); }
+
+.explore-notes {
+  border-top: 1px solid rgba(242, 239, 226, .3);
+  border-bottom: 1px solid rgba(242, 239, 226, .18);
+}
+
+.explore-notes article {
+  padding: 1.65rem .3rem 1.8rem;
+  border-bottom: 1px solid rgba(242, 239, 226, .15);
+}
+
+.explore-notes article:last-child { border-bottom: 0; }
+.explore-notes small { color: rgba(239, 201, 125, .92); font-size: .63rem; letter-spacing: .22em; }
+.explore-notes h3 { margin: .7rem 0 .5rem; font-family: var(--serif); font-size: clamp(1.25rem, 2vw, 1.75rem); font-weight: 400; letter-spacing: .08em; }
+.explore-notes p { margin: 0; color: rgba(242, 239, 226, .68); font-size: .82rem; letter-spacing: .05em; line-height: 1.8; }
+
+.explore-signoff {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: rgba(242, 239, 226, .47);
+  font-family: var(--serif);
+  font-size: .64rem;
+  letter-spacing: .23em;
 }
 
 @keyframes film-loader-camera {
@@ -629,6 +726,8 @@ html.scroll-locked body {
   .video-experience .heritage { grid-column: 1; white-space: normal; }
   .story-scene { min-height: 530vh; }
   .finale-copy { margin-bottom: 11vh; }
+  .explore-page { grid-template-columns: 1fr; gap: 4rem; padding-inline: max(2rem, 7vw); }
+  .explore-notes { width: min(42rem, 100%); }
 }
 
 @media (max-width: 560px) {
@@ -642,7 +741,9 @@ html.scroll-locked body {
   .story-scene { min-height: 520vh; }
   .finale-copy { margin-bottom: 14vh; }
   .finale-copy h2 { font-size: clamp(2.55rem, 12vw, 4.8rem); }
-  .finale-action button { width: 8.4rem; height: 8.4rem; }
+  .explore-page { min-height: 130vh; padding-top: 8rem; }
+  .explore-intro h2 { font-size: clamp(3.25rem, 16vw, 5.4rem); }
+  .explore-button { width: 100%; }
 }
 
 @media (pointer: coarse) {
