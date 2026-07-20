@@ -56,67 +56,104 @@ const fragmentShader = /* glsl */ `
     return value;
   }
 
+  float ridge(vec2 point) {
+    return 1.0 - abs(fbm(point) * 2.0 - 1.0);
+  }
+
+  float paperFibres(vec2 frag) {
+    float longFibres = noise(vec2(frag.x * 0.028, frag.y * 0.42));
+    float crossFibres = noise(vec2(frag.y * 0.035, frag.x * 0.31));
+    float pulp = fbm(frag * 0.008);
+    return longFibres * 0.42 + crossFibres * 0.28 + pulp * 0.3;
+  }
+
   void main() {
     vec2 frag = gl_FragCoord.xy;
     float shortest = min(uResolution.x, uResolution.y);
     vec2 point = (frag - uCentre) / shortest;
     float aspect = uResolution.x / uResolution.y;
-    float distanceToCentre = length(point);
-    float angle = atan(point.y, point.x);
+    float paper = paperFibres(frag);
+    vec2 flowWarp = vec2(
+      fbm(point * 4.2 + vec2(8.1, uTime * 0.018)),
+      fbm(point * 4.6 + vec2(-5.4, -uTime * 0.014))
+    ) - 0.5;
+    vec2 warpedPoint = point + flowWarp * 0.036 + vec2(0.0, -length(point) * 0.012);
+    float distanceToCentre = length(warpedPoint);
+    float angle = atan(warpedPoint.y, warpedPoint.x);
 
-    float paperGrain = noise(frag * 0.42) * 0.5 + noise(frag * 0.91) * 0.5;
-    float fibres = fbm(vec2(angle * 2.15 - uTime * 0.016, distanceToCentre * 34.0 + uTime * 0.025));
-    float veins = fbm(vec2(angle * 8.2 + fibres * 2.0, distanceToCentre * 86.0));
-    float tide = fbm(point * 7.0 + vec2(uTime * 0.025, -uTime * 0.018));
+    float paperGrain = noise(frag * 0.52) * 0.36 + noise(frag * 1.17) * 0.24 + paper * 0.4;
+    float fibres = fbm(vec2(angle * 2.4 - uTime * 0.012, distanceToCentre * 38.0 + paper * 2.4));
+    float veins = ridge(vec2(angle * 9.6 + fibres * 2.7, distanceToCentre * 108.0 + paper * 3.0));
+    float pigment = fbm(warpedPoint * 24.0 + flowWarp * 5.0);
+    float granulation = ridge(warpedPoint * 58.0 + vec2(paper * 4.0));
 
     float loadingRadius = mix(0.052, 0.205, pow(uProgress, 0.72));
     float readyRadius = 0.104 + sin(uTime * 0.72) * 0.004 + uHover * 0.022;
     float radius = mix(loadingRadius, readyRadius, uReady);
-    float roughness = mix(0.026, 0.052, uReady + uProgress * 0.3);
-    float edge = radius + (fibres - 0.5) * roughness + (veins - 0.5) * 0.012;
+    float roughness = mix(0.024, 0.058, uReady + uProgress * 0.34);
+    float edge = radius + (fibres - 0.5) * roughness + (veins - 0.5) * 0.016 + (paper - 0.5) * 0.014;
 
-    float core = smoothstep(edge + 0.012, edge - 0.012, distanceToCentre);
-    float wetHalo = smoothstep(edge + 0.046, edge + 0.005, distanceToCentre) - core * 0.34;
-    float sediment = smoothstep(0.7, 0.95, tide) * smoothstep(edge + 0.02, edge - 0.04, distanceToCentre);
+    float core = smoothstep(edge + 0.01, edge - 0.014, distanceToCentre);
+    float absorption = smoothstep(edge + 0.067 + paper * 0.012, edge + 0.004, distanceToCentre);
+    float wetHalo = max(0.0, absorption - core * 0.84);
+    float wetFront = smoothstep(0.027, 0.003, abs(distanceToCentre - edge - 0.018));
+    float sediment = smoothstep(0.6, 0.9, pigment) * core;
+    float pigmentRing = smoothstep(0.025, 0.002, abs(distanceToCentre - edge + 0.004)) * (0.45 + granulation * 0.55);
 
     float capillary = 0.0;
-    for (int branch = 0; branch < 15; branch++) {
+    for (int branch = 0; branch < 21; branch++) {
       float fi = float(branch);
       float branchAngle = fi * 2.39996 + hash(vec2(fi, 4.7)) * 0.8;
-      float branchLength = radius * (1.12 + hash(vec2(fi, 8.1)) * 0.7);
-      float angularDistance = abs(sin((angle - branchAngle) * 0.5));
-      float radialDistance = abs(distanceToCentre - branchLength * (0.78 + fibres * 0.24));
-      capillary += smoothstep(0.018, 0.002, angularDistance * 0.028 + radialDistance);
+      float branchLength = radius * (1.16 + hash(vec2(fi, 8.1)) * 0.76);
+      float branchWander = sin(distanceToCentre * (58.0 + fi * 1.7) + fi) * 0.025;
+      float rayDistance = abs(sin(angle - branchAngle + branchWander)) * distanceToCentre;
+      float branchWidth = mix(0.0021, 0.006, hash(vec2(fi, 3.2)));
+      float ray = smoothstep(branchWidth, branchWidth * 0.18, rayDistance);
+      float segment = smoothstep(radius * 0.72, radius * 0.96, distanceToCentre)
+        * (1.0 - smoothstep(branchLength, branchLength + 0.035, distanceToCentre));
+      float subBranch = smoothstep(branchWidth * 1.2, branchWidth * 0.18,
+        abs(sin(angle - branchAngle - 0.12 * sin(fi))) * distanceToCentre);
+      capillary += (ray + subBranch * 0.34) * segment;
     }
-    capillary *= smoothstep(radius * 2.05, radius * 0.88, distanceToCentre) * (0.35 + uProgress * 0.65);
+    capillary *= (0.26 + uProgress * 0.74);
 
     float droplets = 0.0;
-    for (int drop = 0; drop < 22; drop++) {
+    for (int drop = 0; drop < 32; drop++) {
       float fi = float(drop);
       float seed = hash(vec2(fi, 13.2));
       float dropAngle = fi * 2.39996 + seed * 1.3;
-      float dropDistance = radius * (1.24 + seed * 1.08);
-      vec2 dropCentre = vec2(cos(dropAngle), sin(dropAngle)) * dropDistance;
-      float dropRadius = mix(0.0016, 0.0068, hash(vec2(fi, 2.9)));
-      droplets += smoothstep(dropRadius, dropRadius * 0.3, length(point - dropCentre));
+      float dropDistance = radius * (1.2 + seed * 1.18);
+      vec2 dropCentre = vec2(cos(dropAngle), sin(dropAngle)) * dropDistance
+        + flowWarp * (0.02 + seed * 0.025);
+      float dropRadius = mix(0.0012, 0.0064, pow(hash(vec2(fi, 2.9)), 2.0));
+      float dropBody = smoothstep(dropRadius, dropRadius * 0.28, length(warpedPoint - dropCentre));
+      float dropRim = smoothstep(dropRadius * 1.32, dropRadius * 0.82, length(warpedPoint - dropCentre));
+      droplets += dropBody + dropRim * 0.28;
     }
 
     vec2 pointerPoint = (frag - uPointer) / shortest;
     float pointerWet = smoothstep(0.035, 0.0, length(pointerPoint)) * uHover;
 
     float openingRadius = uOpening * (0.38 + aspect * 0.52);
-    float openingNoise = fbm(point * 3.4 - vec2(uTime * 0.08, uTime * 0.04));
-    float openingEdge = openingRadius + (openingNoise - 0.5) * mix(0.04, 0.25, uOpening);
-    float openingWash = smoothstep(openingEdge + 0.09, openingEdge - 0.07, distanceToCentre);
+    float openingNoise = fbm(warpedPoint * 3.8 - vec2(uTime * 0.045, uTime * 0.022));
+    float openingLobes = sin(angle * 7.0 + fibres * 4.0) * 0.045 + sin(angle * 13.0 - pigment * 3.0) * 0.018;
+    float openingEdge = openingRadius + (openingNoise - 0.5) * mix(0.05, 0.28, uOpening) + openingLobes * uOpening;
+    float openingWash = smoothstep(openingEdge + 0.085, openingEdge - 0.065, distanceToCentre);
+    float openingFront = smoothstep(0.06, 0.006, abs(distanceToCentre - openingEdge)) * uOpening;
+    float openingGranules = openingWash * smoothstep(0.57, 0.88, pigment) * (0.35 + granulation * 0.65);
 
     vec3 dryInk = vec3(0.016, 0.023, 0.019);
-    vec3 wetInk = vec3(0.045, 0.055, 0.046);
-    vec3 colour = mix(dryInk, wetInk, wetHalo * 0.65 + paperGrain * 0.12);
-    float alpha = core * (0.72 + sediment * 0.2) + wetHalo * 0.23 + capillary * 0.22 + droplets * 0.52 + pointerWet * 0.25;
+    vec3 wetInk = vec3(0.025, 0.078, 0.052);
+    vec3 colour = mix(dryInk, wetInk, wetHalo * 0.72 + paperGrain * 0.09 + openingFront * 0.22);
+    float alpha = core * (0.68 + sediment * 0.2 + granulation * 0.08)
+      + wetHalo * 0.2 + wetFront * 0.16 + pigmentRing * 0.22
+      + capillary * 0.34 + droplets * 0.58 + pointerWet * 0.25;
     vec2 digitPoint = point * vec2(0.58, 1.42);
     float digitReserve = 1.0 - smoothstep(0.035, 0.115, length(digitPoint));
     alpha *= 1.0 - digitReserve * (1.0 - uReady) * 0.88;
-    alpha = max(alpha, openingWash * mix(0.0, 0.97, uOpening));
+    float openingAlpha = openingWash * mix(0.0, 0.91, uOpening)
+      + openingFront * 0.16 + openingGranules * 0.13;
+    alpha = max(alpha, openingAlpha);
     gl_FragColor = vec4(colour, clamp(alpha, 0.0, 0.97));
   }
 `;

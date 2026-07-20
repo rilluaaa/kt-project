@@ -54,23 +54,79 @@ const fragmentShader = /* glsl */ `
     return value;
   }
 
+  float ridge(vec2 p) {
+    return 1.0 - abs(fbm(p) * 2.0 - 1.0);
+  }
+
+  float paperFibres(vec2 frag) {
+    float horizontal = noise(vec2(frag.x * 0.027, frag.y * 0.39));
+    float vertical = noise(vec2(frag.y * 0.034, frag.x * 0.3));
+    return horizontal * 0.48 + vertical * 0.3 + fbm(frag * 0.007) * 0.22;
+  }
+
   void main() {
     vec2 frag = gl_FragCoord.xy;
     float shortest = min(uResolution.x, uResolution.y);
     vec2 p = (frag - uOrigin) / shortest;
     vec2 uv = frag / uResolution;
     float t = uTime * 0.09;
-    float fibres = fbm(vec2(uv.x * 7.0 - t, uv.y * 10.0 + t * 0.7));
-    float veins = fbm(vec2(atan(p.y, p.x) * 5.0, length(p) * 46.0 - t));
+    float paper = paperFibres(frag);
+    vec2 advection = vec2(
+      fbm(p * 4.1 + vec2(t * 0.32, 3.7)),
+      fbm(p * 4.5 + vec2(-6.2, -t * 0.24))
+    ) - 0.5;
+    vec2 flow = p + advection * 0.043 + vec2(0.0, -length(p) * 0.014);
+    float radius = length(flow);
+    float angle = atan(flow.y, flow.x);
+    float fibres = fbm(vec2(uv.x * 7.0 - t, uv.y * 10.0 + t * 0.7) + advection * 1.8);
+    float veins = ridge(vec2(angle * 7.2 + fibres * 2.0, radius * 74.0 - t + paper * 2.0));
+    float pigment = fbm(flow * 25.0 + advection * 4.0);
+    float granulation = ridge(flow * 61.0 + vec2(paper * 3.2));
 
     float holdRadius = mix(0.018, 0.19, pow(uHold, 0.68));
-    float holdEdge = holdRadius + (fibres - 0.5) * 0.052 + (veins - 0.5) * 0.018;
-    float holdInk = smoothstep(holdEdge + 0.018, holdEdge - 0.015, length(p));
-    float wetEdge = smoothstep(holdEdge + 0.065, holdEdge + 0.006, length(p)) * (1.0 - holdInk * 0.55);
+    float surfaceTension = sin(angle * 8.0 + veins * 3.8) * 0.018 + sin(angle * 17.0 - pigment * 2.2) * 0.007;
+    float holdEdge = holdRadius + surfaceTension * uHold + (fibres - 0.5) * 0.055 + (veins - 0.5) * 0.017;
+    float holdInk = smoothstep(holdEdge + 0.014, holdEdge - 0.012, radius);
+    float absorption = smoothstep(holdEdge + 0.072 + paper * 0.012, holdEdge + 0.004, radius);
+    float wetEdge = max(0.0, absorption - holdInk * 0.82);
+    float pigmentRing = smoothstep(0.026, 0.0025, abs(radius - holdEdge + 0.003)) * (0.5 + granulation * 0.5);
+    float sediment = holdInk * smoothstep(0.61, 0.9, pigment) * (0.46 + granulation * 0.54);
 
-    float burstRadius = uBurst * 1.35;
-    float burstEdge = burstRadius + (fbm(p * 3.2 - t) - 0.5) * 0.3 * uBurst;
-    float burst = smoothstep(burstEdge + 0.11, burstEdge - 0.08, length(p));
+    float capillary = 0.0;
+    for (int branch = 0; branch < 20; branch++) {
+      float fi = float(branch);
+      float branchAngle = fi * 2.39996 + hash(vec2(fi, 7.2));
+      float reach = holdRadius * (1.18 + hash(vec2(fi, 2.4)) * 0.82);
+      float wander = sin(radius * (54.0 + fi * 1.3) + fi * 0.8) * 0.03;
+      float rayDistance = abs(sin(angle - branchAngle + wander)) * radius;
+      float width = mix(0.0018, 0.0054, hash(vec2(fi, 5.1)));
+      float ray = smoothstep(width, width * 0.16, rayDistance);
+      float segment = smoothstep(holdRadius * 0.62, holdRadius * 0.94, radius)
+        * (1.0 - smoothstep(reach, reach + 0.04, radius));
+      capillary += ray * segment;
+    }
+    capillary *= uHold * (0.42 + paper * 0.58);
+
+    float burstLife = 1.0 - smoothstep(0.56, 1.0, uBurst);
+    float burstRadius = pow(uBurst, 0.62) * 1.42;
+    float burstRoughness = (fbm(flow * 3.35 - t) - 0.5) * (0.13 + uBurst * 0.25);
+    float burstEdge = burstRadius + burstRoughness + surfaceTension * 2.2;
+    float burst = smoothstep(burstEdge + 0.095, burstEdge - 0.075, radius);
+    float burstFront = smoothstep(0.07, 0.006, abs(radius - burstEdge)) * burstLife;
+
+    float satellite = 0.0;
+    for (int drop = 0; drop < 30; drop++) {
+      float fi = float(drop);
+      float seed = hash(vec2(fi, 11.8));
+      float dropAngle = fi * 2.39996 + seed * 1.7;
+      float travel = burstRadius * (0.68 + seed * 0.78);
+      vec2 dropCentre = vec2(cos(dropAngle), sin(dropAngle)) * travel
+        + advection * (0.018 + seed * 0.038);
+      float dropRadius = mix(0.0013, 0.009, pow(hash(vec2(fi, 3.7)), 2.3));
+      float body = smoothstep(dropRadius, dropRadius * 0.22, length(flow - dropCentre));
+      float rim = smoothstep(dropRadius * 1.38, dropRadius * 0.76, length(flow - dropCentre));
+      satellite += (body + rim * 0.22) * step(seed * 0.38, uBurst);
+    }
 
     float transitionPeak = sin(uTransition * 3.14159265);
     float sweep = uv.x + (fibres - 0.5) * 0.34 + sin(uv.y * 5.0 + t) * 0.035;
@@ -83,10 +139,13 @@ const fragmentShader = /* glsl */ `
     vec3 green = vec3(0.055, 0.24, 0.16);
     vec3 amber = vec3(0.72, 0.46, 0.14);
     vec3 colour = mix(ink, green, 0.2 + (1.0 - uScene) * 0.16);
-    colour = mix(colour, amber, uScene * (wetEdge * 0.34 + burst * 0.16));
+    colour = mix(colour, amber, uScene * (wetEdge * 0.23 + burstFront * 0.1));
+    colour = mix(colour, vec3(0.018, 0.068, 0.044), wetEdge * 0.38 + burstFront * 0.22);
 
-    float alpha = holdInk * (0.3 + uHold * 0.52) + wetEdge * 0.24;
-    alpha = max(alpha, burst * (1.0 - uBurst) * 0.9);
+    float alpha = holdInk * (0.27 + uHold * 0.48 + sediment * 0.13)
+      + wetEdge * 0.2 + pigmentRing * 0.2 + capillary * 0.34;
+    alpha = max(alpha, burst * burstLife * (0.78 + granulation * 0.12));
+    alpha = max(alpha, burstFront * 0.32 + satellite * burstLife * 0.72);
     alpha = max(alpha, transitionInk * 0.84 + fog * 0.18);
     gl_FragColor = vec4(colour, clamp(alpha, 0.0, 0.91));
   }
