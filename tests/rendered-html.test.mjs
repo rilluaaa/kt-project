@@ -59,11 +59,13 @@ test("uses blob seeking, uniform film timing and masked film transitions", async
   assert.match(source, /function directedTimeline/);
   assert.match(source, /function directedTimeline\(progress: number\)/);
   assert.match(source, /return lerp\(0, 0\.995, clamp\(progress\)\)/);
-  assert.match(source, /smoothedVideoTime\.current\[index\] = 0/);
+  assert.match(source, /const value = window\.scrollY/);
+  assert.match(source, /const desired = video\.duration \* mapped/);
+  assert.doesNotMatch(source, /smoothedScroll|smoothedVideoTime/);
   assert.doesNotMatch(source, /introScrollBand|motionStarts|startVelocity/);
   assert.match(source, /response\.blob\(\)/);
-  assert.match(source, /Promise\.all\(indexes\.map/);
-  assert.match(source, /loadedVideos\.current\.size === scenes\.length/);
+  assert.match(source, /Promise\.all\(firstWave\.map/);
+  assert.match(source, /decodedRequired >= requiredReadyCount\.current/);
   assert.match(source, /preload="auto"/);
   assert.match(source, /URL\.createObjectURL/);
   assert.match(source, /!video\.seeking/);
@@ -85,10 +87,12 @@ test("keeps captions monochrome, removes side labels and holds one seamless fina
   assert.match(page, /finaleFilmRef/);
   assert.match(page, /caption\.scene\.id === "street" \? 0 : 1/);
   assert.match(page, /className="explore-page"/);
+  assert.match(page, /className="finale-copy-hold"/);
+  assert.match(css, /\.finale-copy-hold \{[\s\S]*?height: 44vh/);
   assert.match(page, /className="explore-button"/);
   assert.match(page, /熱熾葵青，[\s\S]*燈火未央。/);
   assert.match(css, /\.video-experience \.heritage \{[\s\S]*?color: #050807/);
-  assert.match(css, /\.finale-film-image \{[\s\S]*?object-fit: cover/);
+  assert.match(css, /\.finale-film-image \{[\s\S]*?background: var\(--finale-image\) center \/ cover no-repeat/);
   assert.match(css, /\.explore-page \{[\s\S]*?background:/);
   assert.match(css, /linear-gradient\(132deg/);
   assert.doesNotMatch(css, /margin-top: -16vh/);
@@ -115,15 +119,27 @@ test("long press offers three replayable WebGL effects and a bounded paper-ink f
   assert.match(ink, /uHold/);
   assert.match(ink, /capillary/);
   assert.match(ink, /INK_TRAIL_TUNING/);
-  assert.match(ink, /pointerLag: 0\.15/);
+  assert.match(ink, /pointerLag: 0\.17/);
   assert.match(ink, /trailLifetime: 1\.2/);
   assert.match(ink, /wetDepositLifetime: 2\.2/);
   assert.match(ink, /pressureIterations: 2/);
   assert.match(ink, /new THREE\.WebGLRenderTarget/);
   assert.match(ink, /lineDistance/);
+  assert.match(ink, /window\.addEventListener\("pointermove", onPointerMove/);
+  assert.match(ink, /window\.removeEventListener\("pointermove", onPointerMove\)/);
   assert.match(ink, /visibilitychange/);
   assert.doesNotMatch(ink, /vec3 green|vec3 amber/);
   assert.match(page, /start: 0\.32, end: 0\.55/);
+});
+
+test("keeps source-quality films on mobile while staging their downloads", async () => {
+  const page = await readFile(new URL("../app/VideoHome.tsx", import.meta.url), "utf8");
+  assert.match(page, /useMobileFilms/);
+  assert.match(page, /\(max-width: 720px\), \(pointer: coarse\)/);
+  assert.match(page, /requiredReadyCount\.current = useMobileFilms \? 1 : scenes\.length/);
+  assert.match(page, /firstWave = useMobileFilms \? indexes\.slice\(0, 1\) : indexes/);
+  assert.match(page, /for \(const index of secondWave\) await fetchFilm/);
+  assert.doesNotMatch(page, /scroll-mobile\.mp4|mobileVideo/);
 });
 
 test("keeps the physical opening ink and ships the replacement continuous soundtrack", async () => {

@@ -18,8 +18,8 @@ type Props = {
  * These values are deliberately kept together so the ink can be tuned in one place.
  */
 export const INK_TRAIL_TUNING = {
-  pointerLag: 0.15,
-  inkAmount: 0.52,
+  pointerLag: 0.17,
+  inkAmount: 0.62,
   trailLifetime: 1.2,
   wetDepositLifetime: 2.2,
   absorptionSpeed: 0.9,
@@ -60,6 +60,8 @@ const simulationFragment = /* glsl */ `
   uniform float uBreakup;
   uniform float uMaximumOpacity;
   uniform float uCurl;
+  uniform float uHold;
+  uniform float uBurst;
 
   float hash(vec2 p) {
     return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
@@ -86,15 +88,15 @@ const simulationFragment = /* glsl */ `
     vec4 west = texture2D(uInk, vUv - vec2(uTexel.x, 0.0));
     vec4 diffuse = (north + south + east + west) * 0.25;
     float bleed = clamp(uBleedWidth * 2.7, 0.0, 0.18);
-    float pigment = mix(centre.r, diffuse.r, bleed) * pow(0.015, uDelta / max(0.1, uTrailLifetime));
-    float wet = mix(centre.g, diffuse.g, bleed * 1.28) * pow(0.035, uDelta / max(0.1, uWetLifetime));
+    float pigment = mix(centre.r, diffuse.r, bleed) * pow(0.055, uDelta / max(0.1, uTrailLifetime));
+    float wet = mix(centre.g, diffuse.g, bleed * 1.28) * pow(0.075, uDelta / max(0.1, uWetLifetime));
 
     if (uInject > 0.0) {
       vec2 flow = vec2(sin(vUv.y * 29.0 + uTime * 0.18), cos(vUv.x * 23.0 - uTime * 0.14)) * uCurl;
       vec2 a = uPreviousPointer + flow;
       vec2 b = uPointer + flow;
       float speed = smoothstep(0.0015, 0.045, uMotion);
-      float radius = mix(0.0155, 0.0045, speed);
+      float radius = mix(0.034, 0.012, speed);
       float distanceToBrush = lineDistance(vUv, a, b);
       float brush = smoothstep(radius, radius * 0.32, distanceToBrush);
       float bristles = noise(vUv * vec2(460.0, 338.0) + vec2(uTime * 0.16, -uTime * 0.11));
@@ -104,6 +106,34 @@ const simulationFragment = /* glsl */ `
       float amount = mix(uInkAmount, uInkAmount * 0.34, speed);
       pigment = min(uMaximumOpacity, pigment + deposit * amount);
       wet = min(1.0, wet + deposit * mix(0.76, 0.25, speed));
+    }
+
+    if (uHold > 0.002) {
+      vec2 holdPoint = vUv - uPointer;
+      float holdNoise = noise(vUv * vec2(128.0, 96.0) + vec2(uTime * 0.06, -uTime * 0.04));
+      float holdRadius = mix(0.006, 0.092, pow(uHold, 0.72));
+      float holdEdge = holdRadius + (holdNoise - 0.5) * (0.012 + uHold * 0.026);
+      float pool = smoothstep(holdEdge, holdEdge * 0.38, length(holdPoint));
+      float fibres = noise(vUv * vec2(510.0, 370.0));
+      float holdDeposit = pool * mix(0.36, 1.0, smoothstep(0.38, 0.84, fibres + pool * 0.24));
+      pigment = min(uMaximumOpacity, pigment + holdDeposit * (0.038 + uHold * 0.08));
+      wet = min(1.0, wet + holdDeposit * (0.07 + uHold * 0.12));
+    }
+
+    if (uBurst > 0.001 && uBurst < 0.94) {
+      vec2 burstPoint = vUv - uPointer;
+      float burstAngle = atan(burstPoint.y, burstPoint.x);
+      float burstNoise = noise(vUv * vec2(22.0, 17.0) + vec2(uTime * 0.05, -uTime * 0.04));
+      float burstRadius = pow(uBurst, 0.64) * 0.96;
+      float lobes = sin(burstAngle * 7.0 + burstNoise * 4.0) * 0.055
+        + sin(burstAngle * 13.0 - burstNoise * 3.0) * 0.024;
+      float edgeDistance = abs(length(burstPoint) - burstRadius - lobes * uBurst);
+      float front = smoothstep(0.07, 0.004, edgeDistance) * (1.0 - smoothstep(0.62, 0.94, uBurst));
+      float wash = smoothstep(burstRadius + 0.08, burstRadius - 0.09, length(burstPoint));
+      float brokenFront = front * mix(0.28, 1.0, smoothstep(0.24, 0.88, burstNoise));
+      float burstDeposit = max(wash * 0.055, brokenFront * 0.34);
+      pigment = min(uMaximumOpacity, pigment + burstDeposit);
+      wet = min(1.0, wet + burstDeposit * 1.22);
     }
 
     wet *= mix(1.0, 0.95, uAbsorption);
@@ -123,6 +153,10 @@ const displayFragment = /* glsl */ `
   uniform sampler2D uInk;
   uniform float uPaperGrain;
   uniform float uMaximumOpacity;
+  uniform vec2 uPointerUv;
+  uniform vec2 uPreviousPointerUv;
+  uniform float uFresh;
+  uniform float uMotion;
 
   float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123); }
   float noise(vec2 p) {
@@ -135,6 +169,11 @@ const displayFragment = /* glsl */ `
     return value;
   }
   float ridge(vec2 p) { return 1.0 - abs(fbm(p) * 2.0 - 1.0); }
+  float lineDistance(vec2 p, vec2 a, vec2 b) {
+    vec2 ab = b - a;
+    float along = clamp(dot(p - a, ab) / max(dot(ab, ab), 0.000001), 0.0, 1.0);
+    return length(p - (a + ab * along));
+  }
   float paperFibres(vec2 frag) {
     return noise(vec2(frag.x * 0.027, frag.y * 0.39)) * 0.48
       + noise(vec2(frag.y * 0.034, frag.x * 0.3)) * 0.3 + fbm(frag * 0.007) * 0.22;
@@ -155,9 +194,15 @@ const displayFragment = /* glsl */ `
 
     vec4 residual = texture2D(uInk, vUv);
     float dryGrain = fbm(frag * 0.038 + vec2(t * 2.0, -t)) * uPaperGrain;
-    float residualCore = smoothstep(0.004, 0.32, residual.r) * (0.58 + paper * 0.42);
+    float residualCore = smoothstep(0.002, 0.27, residual.r) * (0.64 + paper * 0.42);
     float residualBleed = smoothstep(0.02, 0.52, residual.g) * (0.08 + paper * 0.14);
-    float residualAlpha = min(uMaximumOpacity, residualCore * (0.36 + dryGrain * 0.34) + residualBleed);
+    float residualAlpha = min(uMaximumOpacity, residualCore * (0.48 + dryGrain * 0.38) + residualBleed * 1.18);
+    float freshSpeed = smoothstep(0.0015, 0.04, uMotion);
+    float freshRadius = mix(0.036, 0.012, freshSpeed);
+    float freshDistance = lineDistance(vUv, uPreviousPointerUv, uPointerUv);
+    float freshBody = smoothstep(freshRadius, freshRadius * 0.3, freshDistance);
+    float freshBreakup = smoothstep(0.32, 0.86, paper + freshBody * 0.28);
+    float freshInk = freshBody * mix(0.42, 1.0, freshBreakup) * uFresh;
 
     float holdRadius = mix(0.006, 0.075, pow(uHold, 0.68));
     float surfaceTension = sin(angle * 8.0 + pigment * 3.8) * 0.006 + sin(angle * 17.0 - pigment * 2.2) * 0.0025;
@@ -197,10 +242,10 @@ const displayFragment = /* glsl */ `
     float transitionInk = smoothstep(0.08, 0.78, uTransition + (fbm(vUv * 7.0 + t) - 0.5) * 0.46 + sin(vUv.y * 8.0 + t) * 0.025);
     vec3 blackInk = vec3(0.007, 0.009, 0.008);
     float holdPresence = smoothstep(0.012, 0.075, uHold);
-    float alpha = residualAlpha;
-    alpha = max(alpha, (holdInk * (0.27 + uHold * 0.48 + sediment * 0.13) + wetEdge * 0.2 + capillary * 0.34) * holdPresence);
-    alpha = max(alpha, burst * burstLife * (0.78 + granulation * 0.12));
-    alpha = max(alpha, burstFront * 0.32 + satellite * burstLife * 0.72);
+    float alpha = max(residualAlpha, freshInk * mix(0.58, 0.34, freshSpeed));
+    alpha = max(alpha, (holdInk * (0.08 + uHold * 0.13) + wetEdge * 0.06 + capillary * 0.1) * holdPresence);
+    alpha = max(alpha, burst * burstLife * (0.12 + granulation * 0.04));
+    alpha = max(alpha, burstFront * 0.08 + satellite * burstLife * 0.16);
     alpha = max(alpha, transitionInk * 0.9);
     gl_FragColor = vec4(blackInk, clamp(alpha, 0.0, 0.91));
   }
@@ -234,7 +279,9 @@ export default function ThreeFilmInk(props: Props) {
     const pointer = new THREE.Vector2(0.5, 0.5);
     const previousPointer = pointer.clone();
     const rawPointer = pointer.clone();
+    const pointerTarget = pointer.clone();
     let pointerReady = false;
+    let lastPointerInput = 0;
     let readTarget: THREE.WebGLRenderTarget;
     let writeTarget: THREE.WebGLRenderTarget;
     let mobile = false;
@@ -257,6 +304,8 @@ export default function ThreeFilmInk(props: Props) {
       uBreakup: { value: INK_TRAIL_TUNING.dryBrushBreakup },
       uMaximumOpacity: { value: INK_TRAIL_TUNING.maximumOpacity },
       uCurl: { value: INK_TRAIL_TUNING.curlStrength },
+      uHold: { value: 0 },
+      uBurst: { value: 1 },
     };
     const displayUniforms = {
       uResolution: { value: new THREE.Vector2(1, 1) },
@@ -268,6 +317,10 @@ export default function ThreeFilmInk(props: Props) {
       uInk: { value: null as THREE.Texture | null },
       uPaperGrain: { value: INK_TRAIL_TUNING.paperGrainStrength },
       uMaximumOpacity: { value: INK_TRAIL_TUNING.maximumOpacity },
+      uPointerUv: { value: pointer.clone() },
+      uPreviousPointerUv: { value: previousPointer.clone() },
+      uFresh: { value: 0 },
+      uMotion: { value: 0 },
     };
     const simMaterial = new THREE.ShaderMaterial({ vertexShader, fragmentShader: simulationFragment, uniforms: simUniforms, depthTest: false, depthWrite: false });
     const displayMaterial = new THREE.ShaderMaterial({ vertexShader, fragmentShader: displayFragment, uniforms: displayUniforms, transparent: true, depthTest: false, depthWrite: false });
@@ -308,6 +361,14 @@ export default function ThreeFilmInk(props: Props) {
     const swapTargets = () => { const current = readTarget; readTarget = writeTarget; writeTarget = current; };
     const queueDraw = () => { if (!disposed && pageVisible && !frame) frame = window.requestAnimationFrame(draw); };
     const onVisibility = () => { pageVisible = !document.hidden; previousTime = performance.now(); queueDraw(); };
+    const onPointerMove = (event: PointerEvent) => {
+      pointerTarget.set(
+        event.clientX / Math.max(1, window.innerWidth),
+        1 - event.clientY / Math.max(1, window.innerHeight),
+      );
+      lastPointerInput = performance.now();
+      queueDraw();
+    };
 
     const draw = (now: number) => {
       frame = 0;
@@ -315,10 +376,11 @@ export default function ThreeFilmInk(props: Props) {
       const current = propsRef.current;
       const delta = Math.min(0.034, Math.max(0.001, (now - previousTime) / 1000));
       previousTime = now;
-      const target = new THREE.Vector2(
+      const holdTarget = new THREE.Vector2(
         current.origin.x / Math.max(1, window.innerWidth),
         1 - current.origin.y / Math.max(1, window.innerHeight),
       );
+      const target = current.holdProgress > 0.002 ? holdTarget : pointerTarget;
       if (!pointerReady) {
         pointer.copy(target); previousPointer.copy(target); rawPointer.copy(target); pointerReady = true;
       }
@@ -328,7 +390,8 @@ export default function ThreeFilmInk(props: Props) {
       pointer.lerp(target, current.reducedMotion ? 1 : INK_TRAIL_TUNING.pointerLag);
       const velocity = pointer.clone().sub(previousPointer);
       const motion = velocity.length();
-      const keepInertia = rawMovement > 0.00024 || (motion > 0.00028 && rawMovement > 0.00004);
+      const recentInput = now - lastPointerInput < 110;
+      const keepInertia = recentInput && (rawMovement > 0.00012 || motion > 0.00016);
       const scaleX = drawingBuffer.x / Math.max(1, window.innerWidth);
       const scaleY = drawingBuffer.y / Math.max(1, window.innerHeight);
       displayUniforms.uOrigin.value.set(current.origin.x * scaleX, (window.innerHeight - current.origin.y) * scaleY);
@@ -345,12 +408,18 @@ export default function ThreeFilmInk(props: Props) {
         simUniforms.uInkAmount.value = INK_TRAIL_TUNING.inkAmount * (current.holdProgress > 0.01 ? 0.84 : 1);
         simUniforms.uMotion.value = motion;
         simUniforms.uTime.value = now * 0.001;
+        simUniforms.uHold.value = current.holdProgress;
+        simUniforms.uBurst.value = Math.min(1, (now - burstStarted) / (current.reducedMotion ? 120 : 900));
         renderer.setRenderTarget(writeTarget);
         renderer.render(simScene, camera);
         swapTargets();
       }
 
       displayUniforms.uInk.value = readTarget.texture;
+      displayUniforms.uPointerUv.value.copy(pointer);
+      displayUniforms.uPreviousPointerUv.value.copy(previousPointer);
+      displayUniforms.uFresh.value = keepInertia ? 1 : Math.max(0, displayUniforms.uFresh.value - delta * 9.5);
+      displayUniforms.uMotion.value = motion;
       displayUniforms.uTime.value = now * 0.001;
       displayUniforms.uTransition.value += (current.transition - displayUniforms.uTransition.value) * (current.reducedMotion ? 1 : 0.095);
       displayUniforms.uHold.value += (current.holdProgress - displayUniforms.uHold.value) * (current.reducedMotion ? 1 : 0.12);
@@ -360,6 +429,7 @@ export default function ThreeFilmInk(props: Props) {
       queueDraw();
     };
 
+    window.addEventListener("pointermove", onPointerMove, { passive: true });
     window.addEventListener("resize", resize);
     document.addEventListener("visibilitychange", onVisibility);
     resize();
@@ -368,6 +438,7 @@ export default function ThreeFilmInk(props: Props) {
     return () => {
       disposed = true;
       if (frame) window.cancelAnimationFrame(frame);
+      window.removeEventListener("pointermove", onPointerMove);
       window.removeEventListener("resize", resize);
       document.removeEventListener("visibilitychange", onVisibility);
       readTarget.dispose();

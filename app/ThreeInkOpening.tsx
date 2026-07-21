@@ -154,13 +154,13 @@ const fragmentShader = /* glsl */ `
         float size = mix(0.0012, 0.0085, pow(hash(vec2(fi, 4.1)), 2.2));
         splash += smoothstep(size, size * 0.22, length(burstPoint - centre)) * step(seed * 0.34, uOpening);
       }
-      float openingAlpha = openingWash * mix(0.0, 0.92, uOpening)
-        + openingFront * 0.2 + openingGranules * 0.13 + splash * 0.58;
+      float openingAlpha = openingWash * mix(0.0, 0.3, uOpening)
+        + openingFront * 0.08 + openingGranules * 0.04 + splash * 0.14;
       colour = mix(colour, vec3(0.005, 0.006, 0.005), openingFront * 0.38);
       alpha = max(alpha, openingAlpha);
     }
-    colour = mix(colour, vec3(0.004, 0.005, 0.004), smoothstep(0.02, 0.46, fluid.x));
-    alpha = max(alpha, fluid.x * (0.36 + paperGrain * 0.18) + fluid.y * 0.11);
+    colour = mix(colour, vec3(0.004, 0.005, 0.004), smoothstep(0.012, 0.34, fluid.x));
+    alpha = max(alpha, fluid.x * (1.18 + paperGrain * 0.22) + fluid.y * 0.18);
     gl_FragColor = vec4(colour, clamp(alpha, 0.0, 0.97));
   }
 `;
@@ -190,14 +190,21 @@ const fluidFragment = /* glsl */ `
       + texture2D(uInk, vUv + vec2(0.0, uTexel.y)) + texture2D(uInk, vUv - vec2(0.0, uTexel.y))) * 0.25;
     float pigment = mix(centre.r, diffuse.r, 0.115) * pow(0.018, uDelta / 1.25);
     float wet = mix(centre.g, diffuse.g, 0.16) * pow(0.04, uDelta / 2.15);
-    float distanceToCentre = length((vUv + warp - uCentre) * vec2(1.0, 0.82));
-    float radius = mix(0.025, 0.48, pow(uOpening, 0.72));
-    float body = smoothstep(radius, radius * 0.18, distanceToCentre);
+    vec2 burstPoint = vUv + warp - uCentre;
+    float angle = atan(burstPoint.y, burstPoint.x);
+    float distanceToCentre = length(burstPoint * vec2(1.0, 0.82));
+    float radius = mix(0.018, 1.08, pow(uOpening, 0.68));
+    float largeNoise = noise(vUv * vec2(13.0, 9.0) + vec2(uTime * 0.025, -uTime * 0.018));
+    float lobes = sin(angle * 7.0 + largeNoise * 4.2) * 0.068
+      + sin(angle * 13.0 - largeNoise * 2.8) * 0.028;
+    float irregularRadius = radius + lobes * uOpening + (largeNoise - 0.5) * 0.12 * uOpening;
+    float body = smoothstep(irregularRadius + 0.055, irregularRadius * 0.22, distanceToCentre);
+    float front = smoothstep(0.072, 0.006, abs(distanceToCentre - irregularRadius));
     float fibres = noise(vUv * vec2(390.0, 280.0) + uTime * 0.12);
     float broken = smoothstep(0.34, 0.92, fibres + body * 0.28);
-    float deposit = body * mix(0.42, 1.0, broken) * uOpening;
-    pigment = min(0.7, pigment + deposit * 0.11);
-    wet = min(1.0, wet + deposit * 0.22);
+    float deposit = max(body * 0.48, front * mix(0.34, 1.0, broken)) * uOpening;
+    pigment = min(0.78, pigment + deposit * 0.16);
+    wet = min(1.0, wet + deposit * 0.27);
     gl_FragColor = vec4(pigment, wet, 0.0, 1.0);
   }
 `;

@@ -12,7 +12,6 @@ import {
   useRef,
   useState,
 } from "react";
-import Image from "next/image";
 
 export const dynamic = "force-static";
 
@@ -182,23 +181,23 @@ export default function VideoHome() {
   const holdFrame = useRef<number | null>(null);
   const holdBegan = useRef(0);
   const cursorTimer = useRef<number | null>(null);
-  const smoothedScroll = useRef(0);
-  const smoothedVideoTime = useRef(scenes.map(() => 0));
   const activeSceneRef = useRef(0);
   const loadingBegan = useRef(0);
+  const requiredReadyCount = useRef(scenes.length);
 
   const refreshLoading = useCallback(() => {
-    const downloaded = fetchProgress.current.reduce((sum, value) => sum + value, 0) / scenes.length;
-    const decoded = loadedVideos.current.size / scenes.length;
+    const required = requiredReadyCount.current;
+    const downloaded = fetchProgress.current.slice(0, required).reduce((sum, value) => sum + value, 0) / required;
+    const decoded = Array.from(loadedVideos.current).filter((index) => index < required).length / required;
     setLoading(Math.min(100, Math.floor(downloaded * 94 + decoded * 6)));
   }, []);
 
   const markVideoReady = useCallback((index: number) => {
     if (loadedVideos.current.has(index)) return;
-    smoothedVideoTime.current[index] = 0;
     loadedVideos.current.add(index);
     refreshLoading();
-    if (loadedVideos.current.size === scenes.length) setAssetsReady(true);
+    const decodedRequired = Array.from(loadedVideos.current).filter((loadedIndex) => loadedIndex < requiredReadyCount.current).length;
+    if (decodedRequired >= requiredReadyCount.current) setAssetsReady(true);
   }, [refreshLoading]);
 
   const warmVideo = useCallback((index: number, video: HTMLVideoElement) => {
@@ -206,8 +205,9 @@ export default function VideoHome() {
     markVideoReady(index);
   }, [markVideoReady]);
 
-  /* Download every film into a seekable Blob and decode its entry frame while
-     the gate is still visible. The journey never has to fetch while moving. */
+  /* Desktop downloads every source film before entry. Mobile opens after the
+     first full-quality film, then fetches the remaining originals in order so
+     bandwidth and memory are never hit by five simultaneous large responses. */
   useEffect(() => {
     let disposed = false;
     const indexes = scenes.map((_, index) => index);
@@ -215,6 +215,8 @@ export default function VideoHome() {
     const urls: string[] = [];
     loadingBegan.current = performance.now();
     fetchProgress.current.fill(0);
+    const useMobileFilms = window.matchMedia("(max-width: 720px), (pointer: coarse)").matches;
+    requiredReadyCount.current = useMobileFilms ? 1 : scenes.length;
     const fetchFilm = async (index: number, signal: AbortSignal) => {
       try {
         const response = await fetch(scenes[index].video, { signal });
@@ -255,7 +257,12 @@ export default function VideoHome() {
         setVideoSources((current) => current.map((source, sourceIndex) => sourceIndex === index ? scenes[index].video : source));
       }
     };
-    void Promise.all(indexes.map((index, position) => fetchFilm(index, controllers[position].signal)));
+    const firstWave = useMobileFilms ? indexes.slice(0, 1) : indexes;
+    const secondWave = useMobileFilms ? indexes.slice(1) : [];
+    void Promise.all(firstWave.map((index) => fetchFilm(index, controllers[index].signal)))
+      .then(async () => {
+        for (const index of secondWave) await fetchFilm(index, controllers[index].signal);
+      });
     return () => {
       disposed = true;
       controllers.forEach((controller) => controller.abort());
@@ -300,9 +307,7 @@ export default function VideoHome() {
 
     const tick = (now: number) => {
       if (disposed) return;
-      const target = window.scrollY;
-      smoothedScroll.current += (target - smoothedScroll.current) * (reducedMotion ? 1 : 0.09);
-      const value = smoothedScroll.current;
+      const value = window.scrollY;
       const viewport = Math.max(1, window.innerHeight);
       const progress = sectionRefs.current.map((section) => {
         if (!section) return 0;
@@ -355,8 +360,7 @@ export default function VideoHome() {
           const video = videoRefs.current[index];
           if (!video || !Number.isFinite(video.duration) || video.duration <= 0) return;
           const mapped = directedTimeline(progress[index] ?? 0);
-          smoothedVideoTime.current[index] += (mapped - smoothedVideoTime.current[index]) * (reducedMotion ? 1 : 0.2);
-          const desired = video.duration * smoothedVideoTime.current[index];
+          const desired = video.duration * mapped;
           if (!video.seeking && Math.abs(video.currentTime - desired) > 0.018) {
             try { video.currentTime = desired; } catch { /* Blob metadata can still be settling. */ }
           }
@@ -364,7 +368,6 @@ export default function VideoHome() {
       }
       frame = window.requestAnimationFrame(tick);
     };
-    smoothedScroll.current = window.scrollY;
     frame = window.requestAnimationFrame(tick);
     return () => {
       disposed = true;
@@ -559,13 +562,10 @@ export default function VideoHome() {
         ))}
         <div className="film-scene film-scene--final" ref={finaleFilmRef}>
           <div className="film-plane">
-            <Image
+            <div
               className="finale-film-image"
-              src={assetUrl("/media/kt3.6-colour.png")}
-              alt=""
-              fill
-              unoptimized
-              sizes="100vw"
+              style={{ "--finale-image": `url(${assetUrl("/media/kt3.6-colour.png")})` } as CSSProperties}
+              aria-hidden="true"
             />
             <div className="film-grade" />
           </div>
@@ -654,6 +654,7 @@ export default function VideoHome() {
               <h2>墨脈未止，<br />人情仍在延續。</h2>
             </div>
           </div>
+          <div className="finale-copy-hold" aria-hidden="true" />
           <section className="explore-page" aria-labelledby="explore-title">
             <div className="explore-wash" aria-hidden="true"><i /><i /><i /></div>
             <div className="explore-intro">

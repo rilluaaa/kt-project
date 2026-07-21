@@ -207,9 +207,12 @@ html.scroll-locked body {
 .film-scene--final { --scene-opacity: 0; }
 
 .finale-film-image {
+  position: absolute;
   z-index: 1;
-  object-fit: cover;
-  object-position: center;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--finale-image) center / cover no-repeat;
 }
 
 .depth-fog {
@@ -286,7 +289,7 @@ html.scroll-locked body {
   z-index: 12;
   inset: 0;
   pointer-events: none;
-  mix-blend-mode: multiply;
+  mix-blend-mode: normal;
 }
 
 .film-ink-field canvas,
@@ -451,23 +454,15 @@ html.scroll-locked body {
   position: absolute;
   inset: 3%;
   border-radius: 62% 38% 56% 44% / 44% 59% 41% 56%;
-  background:
-    radial-gradient(circle at 46% 48%, rgba(3, 4, 3, calc(.28 + var(--hold) * .66)) 0 calc(var(--hold) * 58%), transparent calc(8% + var(--hold) * 67%)),
-    radial-gradient(circle at 50% 52%, transparent 55%, rgba(21, 24, 21, .44) 66%, rgba(3, 4, 3, .52) 71%, transparent 78%);
-  box-shadow: inset 0 0 1.1rem rgba(2, 3, 2, .54), 0 0 calc(var(--hold) * 1.8rem) rgba(0, 0, 0, .3);
-  opacity: calc(var(--hold) * .96);
-  transform: scale(calc(.72 + var(--hold) * .3)) rotate(calc(var(--hold) * 7deg));
-  transition: border-radius .2s linear, opacity .12s ease, transform .16s ease;
+  background: radial-gradient(circle, rgba(3, 4, 3, .08), rgba(3, 4, 3, .18) 54%, transparent 72%);
+  box-shadow: inset 0 0 1.1rem rgba(2, 3, 2, .18);
+  opacity: calc(.26 - var(--hold) * .14);
+  transform: scale(calc(.92 + var(--hold) * .08));
+  transition: opacity .12s ease, transform .16s ease;
 }
 
 .hold-cue > i b {
-  position: absolute;
-  width: calc(.24rem + var(--hold) * .52rem);
-  height: calc(.24rem + var(--hold) * .52rem);
-  border-radius: 53% 47% 63% 37%;
-  background: rgba(2, 3, 2, calc(.34 + var(--hold) * .6));
-  filter: blur(.25px);
-  transform: scale(calc(.4 + var(--hold) * .85));
+  display: none;
 }
 .hold-cue > i b:nth-child(1) { top: 7%; right: 12%; }
 .hold-cue > i b:nth-child(2) { right: -2%; bottom: 25%; }
@@ -555,6 +550,13 @@ html.scroll-locked body {
   font-weight: 400;
   letter-spacing: .08em;
   line-height: 1.2;
+}
+
+/* Keep the closing words on the sixth painting before the green destination
+   page rises. The sticky finale remains visible throughout this spacer. */
+.finale-copy-hold {
+  height: 44vh;
+  pointer-events: none;
 }
 
 .explore-page {
@@ -726,6 +728,7 @@ html.scroll-locked body {
   .video-experience .heritage { grid-column: 1; white-space: normal; }
   .story-scene { min-height: 680vh; }
   .finale-copy { margin-bottom: 11vh; }
+  .finale-copy-hold { height: 34vh; }
   .explore-page { grid-template-columns: 1fr; gap: 4rem; padding-inline: max(2rem, 7vw); }
   .explore-notes { width: min(42rem, 100%); }
 }
