@@ -113,6 +113,9 @@ const smooth = (value: number) => {
 };
 const range = (value: number, start: number, end: number) => smooth((value - start) / (end - start));
 const lerp = (a: number, b: number, amount: number) => a + (b - a) * amount;
+// Keep only a trace of the former catch-up feel. A value near zero stays close
+// to the physical scroll position and avoids the slow-start / fast-finish jump.
+const LIGHT_SCROLL_ACCELERATION = 0.06;
 
 function buildSoundtrack(): AudioEngine | null {
   if (typeof window === "undefined") return null;
@@ -160,6 +163,8 @@ export default function VideoHome() {
   const [opening, setOpening] = useState(false);
   const [assetsReady, setAssetsReady] = useState(false);
   const [videoSources, setVideoSources] = useState<Array<string | null>>(() => scenes.map(() => null));
+  const [mobilePlayback, setMobilePlayback] = useState(false);
+  const [posterSources, setPosterSources] = useState(() => scenes.map((_, index) => index === 0));
   const [cursorVisible, setCursorVisible] = useState(false);
   const [holdProgress, setHoldProgress] = useState(0);
   const [holding, setHolding] = useState(false);
@@ -181,9 +186,11 @@ export default function VideoHome() {
   const holdFrame = useRef<number | null>(null);
   const holdBegan = useRef(0);
   const cursorTimer = useRef<number | null>(null);
+  const smoothedScroll = useRef(0);
   const activeSceneRef = useRef(0);
   const loadingBegan = useRef(0);
   const requiredReadyCount = useRef(scenes.length);
+  const minimumGateMs = useRef(1750);
 
   const refreshLoading = useCallback(() => {
     const required = requiredReadyCount.current;
@@ -205,18 +212,42 @@ export default function VideoHome() {
     markVideoReady(index);
   }, [markVideoReady]);
 
-  /* Desktop downloads every source film before entry. Mobile opens after the
-     first full-quality film, then fetches the remaining originals in order so
-     bandwidth and memory are never hit by five simultaneous large responses. */
+  /* Desktop keeps fully seekable Blob films. On mobile, use the exact same
+     1764x1176 sources as progressive URLs and open as soon as the first film's
+     metadata is available. This avoids blocking entry on a full 12 MB Blob. */
   useEffect(() => {
     let disposed = false;
+    let stateFrame = 0;
     const indexes = scenes.map((_, index) => index);
-    const controllers = indexes.map(() => new AbortController());
     const urls: string[] = [];
     loadingBegan.current = performance.now();
     fetchProgress.current.fill(0);
     const useMobileFilms = window.matchMedia("(max-width: 720px), (pointer: coarse)").matches;
     requiredReadyCount.current = useMobileFilms ? 1 : scenes.length;
+    minimumGateMs.current = useMobileFilms ? 900 : 1750;
+
+    if (useMobileFilms) {
+      // Only the first poster is referenced before entry; later posters and the
+      // finale are introduced near their scenes instead of competing for the
+      // phone's initial bandwidth.
+      fetchProgress.current[0] = 0.96;
+      stateFrame = window.requestAnimationFrame(() => {
+        setMobilePlayback(true);
+        setPosterSources(scenes.map((_, index) => index === 0));
+        setVideoSources(scenes.map((scene) => scene.video));
+        refreshLoading();
+      });
+      return () => {
+        disposed = true;
+        window.cancelAnimationFrame(stateFrame);
+      };
+    }
+
+    stateFrame = window.requestAnimationFrame(() => {
+      setMobilePlayback(false);
+      setPosterSources(scenes.map(() => true));
+    });
+    const controllers = indexes.map(() => new AbortController());
     const fetchFilm = async (index: number, signal: AbortSignal) => {
       try {
         const response = await fetch(scenes[index].video, { signal });
@@ -257,14 +288,10 @@ export default function VideoHome() {
         setVideoSources((current) => current.map((source, sourceIndex) => sourceIndex === index ? scenes[index].video : source));
       }
     };
-    const firstWave = useMobileFilms ? indexes.slice(0, 1) : indexes;
-    const secondWave = useMobileFilms ? indexes.slice(1) : [];
-    void Promise.all(firstWave.map((index) => fetchFilm(index, controllers[index].signal)))
-      .then(async () => {
-        for (const index of secondWave) await fetchFilm(index, controllers[index].signal);
-      });
+    void Promise.all(indexes.map((index) => fetchFilm(index, controllers[index].signal)));
     return () => {
       disposed = true;
+      window.cancelAnimationFrame(stateFrame);
       controllers.forEach((controller) => controller.abort());
       urls.forEach((url) => URL.revokeObjectURL(url));
     };
@@ -272,7 +299,7 @@ export default function VideoHome() {
 
   useEffect(() => {
     if (assetsReady) {
-      const delay = Math.max(0, 1750 - (performance.now() - loadingBegan.current));
+      const delay = Math.max(0, minimumGateMs.current - (performance.now() - loadingBegan.current));
       const finish = window.setTimeout(() => {
         setLoading(100);
         window.setTimeout(() => setReady(true), 360);
@@ -280,6 +307,20 @@ export default function VideoHome() {
       return () => window.clearTimeout(finish);
     }
   }, [assetsReady]);
+
+  useEffect(() => {
+    if (!mobilePlayback || !started) return;
+    const nextIndex = Math.min(scenes.length - 1, activeScene + 1);
+    const stateFrame = window.requestAnimationFrame(() => {
+      setPosterSources((current) => current.map((enabled, index) => enabled || index <= nextIndex));
+    });
+    const nextVideo = videoRefs.current[nextIndex];
+    if (nextVideo && nextVideo.preload !== "auto") {
+      nextVideo.preload = "auto";
+      nextVideo.load();
+    }
+    return () => window.cancelAnimationFrame(stateFrame);
+  }, [activeScene, mobilePlayback, started]);
 
   useEffect(() => {
     const media = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -307,7 +348,11 @@ export default function VideoHome() {
 
     const tick = (now: number) => {
       if (disposed) return;
-      const value = window.scrollY;
+      const target = window.scrollY;
+      smoothedScroll.current = reducedMotion
+        ? target
+        : lerp(target, smoothedScroll.current, LIGHT_SCROLL_ACCELERATION);
+      const value = smoothedScroll.current;
       const viewport = Math.max(1, window.innerHeight);
       const progress = sectionRefs.current.map((section) => {
         if (!section) return 0;
@@ -368,6 +413,7 @@ export default function VideoHome() {
       }
       frame = window.requestAnimationFrame(tick);
     };
+    smoothedScroll.current = window.scrollY;
     frame = window.requestAnimationFrame(tick);
     return () => {
       disposed = true;
@@ -542,15 +588,19 @@ export default function VideoHome() {
             ref={(node) => { filmSceneRefs.current[index] = node; }}
             key={scene.id}
           >
-            <div className="film-plane" style={{ "--poster-image": `url(${scene.poster})` } as CSSProperties}>
+            <div
+              className="film-plane"
+              style={posterSources[index] ? { "--poster-image": `url(${scene.poster})` } as CSSProperties : undefined}
+            >
               <video
                 ref={(node) => { videoRefs.current[index] = node; }}
                 className="scene-film"
                 muted
                 playsInline
-                preload="auto"
-                poster={scene.poster}
+                preload={!mobilePlayback || index === 0 || (started && index <= activeScene + 1) ? "auto" : "metadata"}
+                poster={posterSources[index] ? scene.poster : undefined}
                 src={videoSources[index] ?? undefined}
+                onLoadedMetadata={(event) => warmVideo(index, event.currentTarget)}
                 onLoadedData={(event) => warmVideo(index, event.currentTarget)}
                 onCanPlay={(event) => warmVideo(index, event.currentTarget)}
                 onSeeked={() => markVideoReady(index)}
@@ -564,7 +614,10 @@ export default function VideoHome() {
           <div className="film-plane">
             <div
               className="finale-film-image"
-              style={{ "--finale-image": `url(${assetUrl("/media/kt3.6-colour.png")})` } as CSSProperties}
+              data-finale-image={assetUrl("/media/kt3.6-colour.png")}
+              style={posterSources[scenes.length - 1]
+                ? { "--finale-image": `url(${assetUrl("/media/kt3.6-colour.png")})` } as CSSProperties
+                : undefined}
               aria-hidden="true"
             />
             <div className="film-grade" />

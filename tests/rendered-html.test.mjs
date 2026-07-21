@@ -44,7 +44,7 @@ test("ships five native-quality short-GOP scroll films with exact posters", asyn
   for (let index = 1; index <= 5; index += 1) {
     const file = `kt3.${index}-scroll.mp4`;
     assert.match(source, new RegExp(file.replace(".", "\\.")));
-    assert.match(html, new RegExp(`kt3\\.${index}-poster\\.png`));
+    assert.match(source, new RegExp(`kt3\\.${index}-poster\\.png`));
     const asset = await stat(new URL(`../public/media/${file}`, import.meta.url));
     assert.ok(asset.size > 8_000_000, `${file} should retain the high-quality 1764px source film`);
   }
@@ -52,21 +52,23 @@ test("ships five native-quality short-GOP scroll films with exact posters", asyn
   assert.doesNotMatch(html, /ThreeMountainStage|ink-scroll-world\.glb/);
 });
 
-test("uses blob seeking, uniform film timing and masked film transitions", async () => {
+test("uses desktop blob seeking, lightly accelerated film timing and masked film transitions", async () => {
   const source = await readFile(new URL("../app/VideoHome.tsx", import.meta.url), "utf8");
   const ink = await readFile(new URL("../app/ThreeFilmInk.tsx", import.meta.url), "utf8");
   const css = await readFile(new URL("../app/video.css", import.meta.url), "utf8");
   assert.match(source, /function directedTimeline/);
   assert.match(source, /function directedTimeline\(progress: number\)/);
   assert.match(source, /return lerp\(0, 0\.995, clamp\(progress\)\)/);
-  assert.match(source, /const value = window\.scrollY/);
+  assert.match(source, /LIGHT_SCROLL_ACCELERATION = 0\.06/);
+  assert.match(source, /lerp\(target, smoothedScroll\.current, LIGHT_SCROLL_ACCELERATION\)/);
   assert.match(source, /const desired = video\.duration \* mapped/);
-  assert.doesNotMatch(source, /smoothedScroll|smoothedVideoTime/);
+  assert.match(source, /smoothedScroll/);
+  assert.doesNotMatch(source, /smoothedVideoTime/);
   assert.doesNotMatch(source, /introScrollBand|motionStarts|startVelocity/);
   assert.match(source, /response\.blob\(\)/);
-  assert.match(source, /Promise\.all\(firstWave\.map/);
+  assert.match(source, /Promise\.all\(indexes\.map/);
   assert.match(source, /decodedRequired >= requiredReadyCount\.current/);
-  assert.match(source, /preload="auto"/);
+  assert.match(source, /preload=\{!mobilePlayback/);
   assert.match(source, /URL\.createObjectURL/);
   assert.match(source, /!video\.seeking/);
   assert.match(source, /currentTime = desired/);
@@ -132,13 +134,17 @@ test("long press offers three replayable WebGL effects and a bounded paper-ink f
   assert.match(page, /start: 0\.32, end: 0\.55/);
 });
 
-test("keeps source-quality films on mobile while staging their downloads", async () => {
+test("keeps source-quality progressive films on mobile while deferring hidden media", async () => {
   const page = await readFile(new URL("../app/VideoHome.tsx", import.meta.url), "utf8");
   assert.match(page, /useMobileFilms/);
   assert.match(page, /\(max-width: 720px\), \(pointer: coarse\)/);
   assert.match(page, /requiredReadyCount\.current = useMobileFilms \? 1 : scenes\.length/);
-  assert.match(page, /firstWave = useMobileFilms \? indexes\.slice\(0, 1\) : indexes/);
-  assert.match(page, /for \(const index of secondWave\) await fetchFilm/);
+  assert.match(page, /minimumGateMs\.current = useMobileFilms \? 900 : 1750/);
+  assert.match(page, /setVideoSources\(scenes\.map\(\(scene\) => scene\.video\)\)/);
+  assert.match(page, /preload=\{!mobilePlayback/);
+  assert.match(page, /onLoadedMetadata/);
+  assert.match(page, /index <= nextIndex/);
+  assert.match(page, /posterSources\[scenes\.length - 1\]/);
   assert.doesNotMatch(page, /scroll-mobile\.mp4|mobileVideo/);
 });
 
