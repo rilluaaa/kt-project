@@ -172,7 +172,6 @@ export default function VideoHome() {
   const [opening, setOpening] = useState(false);
   const [assetsReady, setAssetsReady] = useState(false);
   const [videoSources, setVideoSources] = useState<Array<string | null>>(() => scenes.map(() => null));
-  const [mobilePlayback, setMobilePlayback] = useState(false);
   const [posterSources, setPosterSources] = useState(() => scenes.map((_, index) => index === 0));
   const [cursorVisible, setCursorVisible] = useState(false);
   const [holdProgress, setHoldProgress] = useState(0);
@@ -221,9 +220,9 @@ export default function VideoHome() {
     markVideoReady(index);
   }, [markVideoReady]);
 
-  /* Desktop keeps fully seekable source-quality Blob films. Mobile uses a
-     high-quality 1080x720 encode and only attaches the first source before
-     entry; later films are introduced one scene ahead. */
+  /* Both layouts finish downloading every scrub film behind the loading gate.
+     Mobile selects a compact 1080x720 encode, so entry is faster without
+     postponing any scene download until after the journey has started. */
   useEffect(() => {
     let disposed = false;
     let stateFrame = 0;
@@ -232,34 +231,17 @@ export default function VideoHome() {
     loadingBegan.current = performance.now();
     fetchProgress.current.fill(0);
     const useMobileFilms = window.matchMedia("(max-width: 720px), (pointer: coarse)").matches;
-    requiredReadyCount.current = useMobileFilms ? 1 : scenes.length;
-    minimumGateMs.current = useMobileFilms ? 900 : 1750;
-
-    if (useMobileFilms) {
-      // Only the first poster is referenced before entry; later posters and the
-      // finale are introduced near their scenes instead of competing for the
-      // phone's initial bandwidth.
-      fetchProgress.current[0] = 0.96;
-      stateFrame = window.requestAnimationFrame(() => {
-        setMobilePlayback(true);
-        setPosterSources(scenes.map((_, index) => index === 0));
-        setVideoSources(scenes.map((scene, index) => index === 0 ? scene.mobileVideo : null));
-        refreshLoading();
-      });
-      return () => {
-        disposed = true;
-        window.cancelAnimationFrame(stateFrame);
-      };
-    }
+    requiredReadyCount.current = scenes.length;
+    minimumGateMs.current = useMobileFilms ? 650 : 1750;
 
     stateFrame = window.requestAnimationFrame(() => {
-      setMobilePlayback(false);
       setPosterSources(scenes.map(() => true));
     });
     const controllers = indexes.map(() => new AbortController());
     const fetchFilm = async (index: number, signal: AbortSignal) => {
+      const source = useMobileFilms ? scenes[index].mobileVideo : scenes[index].video;
       try {
-        const response = await fetch(scenes[index].video, { signal });
+        const response = await fetch(source, { signal });
         if (!response.ok) throw new Error(`film ${index} failed`);
         const total = Number(response.headers.get("content-length")) || 0;
         let blob: Blob;
@@ -294,7 +276,7 @@ export default function VideoHome() {
         if (disposed) return;
         fetchProgress.current[index] = 1;
         refreshLoading();
-        setVideoSources((current) => current.map((source, sourceIndex) => sourceIndex === index ? scenes[index].video : source));
+        setVideoSources((current) => current.map((currentSource, sourceIndex) => sourceIndex === index ? source : currentSource));
       }
     };
     void Promise.all(indexes.map((index) => fetchFilm(index, controllers[index].signal)));
@@ -316,18 +298,6 @@ export default function VideoHome() {
       return () => window.clearTimeout(finish);
     }
   }, [assetsReady]);
-
-  useEffect(() => {
-    if (!mobilePlayback || !started) return;
-    const nextIndex = Math.min(scenes.length - 1, activeScene + 1);
-    const stateFrame = window.requestAnimationFrame(() => {
-      setPosterSources((current) => current.map((enabled, index) => enabled || index <= nextIndex));
-      setVideoSources((current) => current.map((source, index) => (
-        source ?? (index <= nextIndex ? scenes[index].mobileVideo : null)
-      )));
-    });
-    return () => window.cancelAnimationFrame(stateFrame);
-  }, [activeScene, mobilePlayback, started]);
 
   useEffect(() => {
     const media = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -631,7 +601,7 @@ export default function VideoHome() {
                 className="scene-film"
                 muted
                 playsInline
-                preload={!mobilePlayback || index === 0 || (started && index <= activeScene + 1) ? "auto" : "metadata"}
+                preload="auto"
                 poster={posterSources[index] ? scene.poster : undefined}
                 src={videoSources[index] ?? undefined}
                 onLoadedMetadata={(event) => warmVideo(index, event.currentTarget)}

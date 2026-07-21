@@ -72,7 +72,7 @@ test("uses desktop blob seeking, lightly accelerated film timing and masked film
   assert.match(source, /response\.blob\(\)/);
   assert.match(source, /Promise\.all\(indexes\.map/);
   assert.match(source, /decodedRequired >= requiredReadyCount\.current/);
-  assert.match(source, /preload=\{!mobilePlayback/);
+  assert.match(source, /preload="auto"/);
   assert.match(source, /URL\.createObjectURL/);
   assert.match(source, /!video\.seeking/);
   assert.match(source, /currentTime = desired/);
@@ -138,22 +138,24 @@ test("long press offers three replayable WebGL effects and a bounded paper-ink f
   assert.match(page, /start: 0\.32, end: 0\.55/);
 });
 
-test("keeps high-quality 1080p-class films on mobile while deferring hidden media", async () => {
+test("preloads every compact 1080p-class mobile film before entry", async () => {
   const page = await readFile(new URL("../app/VideoHome.tsx", import.meta.url), "utf8");
   assert.match(page, /useMobileFilms/);
   assert.match(page, /\(max-width: 720px\), \(pointer: coarse\)/);
-  assert.match(page, /requiredReadyCount\.current = useMobileFilms \? 1 : scenes\.length/);
-  assert.match(page, /minimumGateMs\.current = useMobileFilms \? 900 : 1750/);
-  assert.match(page, /index === 0 \? scene\.mobileVideo : null/);
-  assert.match(page, /index <= nextIndex \? scenes\[index\]\.mobileVideo : null/);
-  assert.match(page, /preload=\{!mobilePlayback/);
+  assert.match(page, /requiredReadyCount\.current = scenes\.length/);
+  assert.match(page, /minimumGateMs\.current = useMobileFilms \? 650 : 1750/);
+  assert.match(page, /useMobileFilms \? scenes\[index\]\.mobileVideo : scenes\[index\]\.video/);
+  assert.match(page, /Promise\.all\(indexes\.map/);
+  assert.match(page, /URL\.createObjectURL\(blob\)/);
+  assert.match(page, /preload="auto"/);
   assert.match(page, /onLoadedMetadata/);
-  assert.match(page, /index <= nextIndex/);
   assert.match(page, /posterSources\[scenes\.length - 1\]/);
+  assert.doesNotMatch(page, /index === 0 \? scene\.mobileVideo : null/);
+  assert.doesNotMatch(page, /index <= nextIndex \? scenes\[index\]\.mobileVideo : null/);
   for (let index = 1; index <= 5; index += 1) {
     assert.match(page, new RegExp(`kt3\\.${index}-scroll-mobile\\.mp4`));
     const mobileFilm = await stat(new URL(`../public/media/kt3.${index}-scroll-mobile.mp4`, import.meta.url));
-    assert.ok(mobileFilm.size > 4_000_000 && mobileFilm.size < 8_000_000);
+    assert.ok(mobileFilm.size > 3_500_000 && mobileFilm.size < 6_000_000);
   }
 });
 
