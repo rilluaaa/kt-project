@@ -30,7 +30,7 @@ test("server-renders the five-scene 熱熾葵青 film journey and colour finale"
   }
   assert.match(html, /茶湯拉成幼線，在蒸氣裏沖出清晨。/);
   assert.match(html, /木屑隨刻刀落下，舊舖把手藝留在街角。/);
-  assert.match(html, /kt3\.6-colour\.png/);
+  assert.match(html, /kt3\.6-colour\.webp/);
   assert.match(html, /探索葵青/);
   assert.match(html, /山海相接/);
   assert.match(html, /工藝在場/);
@@ -44,7 +44,7 @@ test("ships five native-quality short-GOP scroll films with exact posters", asyn
   for (let index = 1; index <= 5; index += 1) {
     const file = `kt3.${index}-scroll.mp4`;
     assert.match(source, new RegExp(file.replace(".", "\\.")));
-    assert.match(source, new RegExp(`kt3\\.${index}-poster\\.png`));
+    assert.match(source, new RegExp(`kt3\\.${index}-poster\\.webp`));
     const asset = await stat(new URL(`../public/media/${file}`, import.meta.url));
     assert.ok(asset.size > 8_000_000, `${file} should retain the high-quality 1764px source film`);
   }
@@ -60,6 +60,10 @@ test("uses desktop blob seeking, lightly accelerated film timing and masked film
   assert.match(source, /function directedTimeline\(progress: number\)/);
   assert.match(source, /return lerp\(0, 0\.995, clamp\(progress\)\)/);
   assert.match(source, /LIGHT_SCROLL_ACCELERATION = 0\.06/);
+  assert.match(source, /SCROLL_COAST_STRENGTH = 0\.035/);
+  assert.match(source, /SCROLL_COAST_DAMPING = 0\.87/);
+  assert.match(source, /window\.scrollBy\(\{ top: coastVelocity/);
+  assert.match(source, /window\.addEventListener\("wheel", onWheel/);
   assert.match(source, /lerp\(target, smoothedScroll\.current, LIGHT_SCROLL_ACCELERATION\)/);
   assert.match(source, /const desired = video\.duration \* mapped/);
   assert.match(source, /smoothedScroll/);
@@ -134,18 +138,23 @@ test("long press offers three replayable WebGL effects and a bounded paper-ink f
   assert.match(page, /start: 0\.32, end: 0\.55/);
 });
 
-test("keeps source-quality progressive films on mobile while deferring hidden media", async () => {
+test("keeps high-quality 1080p-class films on mobile while deferring hidden media", async () => {
   const page = await readFile(new URL("../app/VideoHome.tsx", import.meta.url), "utf8");
   assert.match(page, /useMobileFilms/);
   assert.match(page, /\(max-width: 720px\), \(pointer: coarse\)/);
   assert.match(page, /requiredReadyCount\.current = useMobileFilms \? 1 : scenes\.length/);
   assert.match(page, /minimumGateMs\.current = useMobileFilms \? 900 : 1750/);
-  assert.match(page, /setVideoSources\(scenes\.map\(\(scene\) => scene\.video\)\)/);
+  assert.match(page, /index === 0 \? scene\.mobileVideo : null/);
+  assert.match(page, /index <= nextIndex \? scenes\[index\]\.mobileVideo : null/);
   assert.match(page, /preload=\{!mobilePlayback/);
   assert.match(page, /onLoadedMetadata/);
   assert.match(page, /index <= nextIndex/);
   assert.match(page, /posterSources\[scenes\.length - 1\]/);
-  assert.doesNotMatch(page, /scroll-mobile\.mp4|mobileVideo/);
+  for (let index = 1; index <= 5; index += 1) {
+    assert.match(page, new RegExp(`kt3\\.${index}-scroll-mobile\\.mp4`));
+    const mobileFilm = await stat(new URL(`../public/media/kt3.${index}-scroll-mobile.mp4`, import.meta.url));
+    assert.ok(mobileFilm.size > 4_000_000 && mobileFilm.size < 8_000_000);
+  }
 });
 
 test("keeps the physical opening ink and ships the replacement continuous soundtrack", async () => {

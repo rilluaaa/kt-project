@@ -35,6 +35,7 @@ type Scene = {
   interaction?: string;
   heritage?: string;
   video: string;
+  mobileVideo: string;
   poster: string;
   lines: Array<{ text: string; start: number; end: number; direction: CaptionDirection }>;
 };
@@ -44,7 +45,8 @@ const scenes: Scene[] = [
     id: "mountain",
     place: "山城入墨",
     video: assetUrl("/media/kt3.1-scroll.mp4"),
-    poster: assetUrl("/media/kt3.1-poster.png"),
+    mobileVideo: assetUrl("/media/kt3.1-scroll-mobile.mp4"),
+    poster: assetUrl("/media/kt3.1-poster.webp"),
     lines: [
       { text: "霧穿過山脊，墨沿石縫落進城市。", start: 0.32, end: 0.55, direction: "near-left" },
       { text: "山與樓之間，葵青從海霧中醒來。", start: 0.62, end: 0.84, direction: "far-right" },
@@ -56,7 +58,8 @@ const scenes: Scene[] = [
     interaction: "沖開茶香",
     heritage: "港式奶茶製作技藝",
     video: assetUrl("/media/kt3.2-scroll.mp4"),
-    poster: assetUrl("/media/kt3.2-poster.png"),
+    mobileVideo: assetUrl("/media/kt3.2-scroll-mobile.mp4"),
+    poster: assetUrl("/media/kt3.2-poster.webp"),
     lines: [
       { text: "茶湯拉成幼線，在蒸氣裏沖出清晨。", start: 0.25, end: 0.50, direction: "high-left" },
       { text: "木屑隨刻刀落下，舊舖把手藝留在街角。", start: 0.59, end: 0.83, direction: "low-centre" },
@@ -68,7 +71,8 @@ const scenes: Scene[] = [
     interaction: "燃亮霓虹",
     heritage: "霓虹燈管製作技藝",
     video: assetUrl("/media/kt3.3-scroll.mp4"),
-    poster: assetUrl("/media/kt3.3-poster.png"),
+    mobileVideo: assetUrl("/media/kt3.3-scroll-mobile.mp4"),
+    poster: assetUrl("/media/kt3.3-poster.webp"),
     lines: [
       { text: "燈火沿着匠人的手藝，在夜色裏逐筆亮起。", start: 0.34, end: 0.58, direction: "high-right" },
       { text: "金屬、竹影與人情，磨成葵涌的一夜光。", start: 0.64, end: 0.86, direction: "low-left" },
@@ -78,7 +82,8 @@ const scenes: Scene[] = [
     id: "harbour",
     place: "海港成脈",
     video: assetUrl("/media/kt3.4-scroll.mp4"),
-    poster: assetUrl("/media/kt3.4-poster.png"),
+    mobileVideo: assetUrl("/media/kt3.4-scroll-mobile.mp4"),
+    poster: assetUrl("/media/kt3.4-poster.webp"),
     lines: [
       { text: "吊臂提起晨霧，貨櫃把城市的脈搏排成長線。", start: 0.31, end: 0.56, direction: "near-left" },
       { text: "潮水一進一退，海港仍把遠方送到眼前。", start: 0.63, end: 0.85, direction: "high-right" },
@@ -90,7 +95,8 @@ const scenes: Scene[] = [
     interaction: "點亮戲棚",
     heritage: "竹棚戲台與社區節慶",
     video: assetUrl("/media/kt3.5-scroll.mp4"),
-    poster: assetUrl("/media/kt3.5-poster.png"),
+    mobileVideo: assetUrl("/media/kt3.5-scroll-mobile.mp4"),
+    poster: assetUrl("/media/kt3.5-poster.webp"),
     lines: [
       { text: "竹棚靠着海風搭起，一聲鑼鼓叫亮整個夜晚。", start: 0.32, end: 0.57, direction: "low-left" },
       { text: "燈影照住台前台後，也照住一代代相聚的人。", start: 0.63, end: 0.86, direction: "far-right" },
@@ -116,6 +122,9 @@ const lerp = (a: number, b: number, amount: number) => a + (b - a) * amount;
 // Keep only a trace of the former catch-up feel. A value near zero stays close
 // to the physical scroll position and avoids the slow-start / fast-finish jump.
 const LIGHT_SCROLL_ACCELERATION = 0.06;
+const SCROLL_COAST_STRENGTH = 0.035;
+const SCROLL_COAST_DAMPING = 0.87;
+const SCROLL_COAST_DELAY_MS = 72;
 
 function buildSoundtrack(): AudioEngine | null {
   if (typeof window === "undefined") return null;
@@ -212,9 +221,9 @@ export default function VideoHome() {
     markVideoReady(index);
   }, [markVideoReady]);
 
-  /* Desktop keeps fully seekable Blob films. On mobile, use the exact same
-     1764x1176 sources as progressive URLs and open as soon as the first film's
-     metadata is available. This avoids blocking entry on a full 12 MB Blob. */
+  /* Desktop keeps fully seekable source-quality Blob films. Mobile uses a
+     high-quality 1080x720 encode and only attaches the first source before
+     entry; later films are introduced one scene ahead. */
   useEffect(() => {
     let disposed = false;
     let stateFrame = 0;
@@ -234,7 +243,7 @@ export default function VideoHome() {
       stateFrame = window.requestAnimationFrame(() => {
         setMobilePlayback(true);
         setPosterSources(scenes.map((_, index) => index === 0));
-        setVideoSources(scenes.map((scene) => scene.video));
+        setVideoSources(scenes.map((scene, index) => index === 0 ? scene.mobileVideo : null));
         refreshLoading();
       });
       return () => {
@@ -313,12 +322,10 @@ export default function VideoHome() {
     const nextIndex = Math.min(scenes.length - 1, activeScene + 1);
     const stateFrame = window.requestAnimationFrame(() => {
       setPosterSources((current) => current.map((enabled, index) => enabled || index <= nextIndex));
+      setVideoSources((current) => current.map((source, index) => (
+        source ?? (index <= nextIndex ? scenes[index].mobileVideo : null)
+      )));
     });
-    const nextVideo = videoRefs.current[nextIndex];
-    if (nextVideo && nextVideo.preload !== "auto") {
-      nextVideo.preload = "auto";
-      nextVideo.load();
-    }
     return () => window.cancelAnimationFrame(stateFrame);
   }, [activeScene, mobilePlayback, started]);
 
@@ -338,6 +345,9 @@ export default function VideoHome() {
     let disposed = false;
     let frame = 0;
     let lastVideoSeek = 0;
+    let lastWheelAt = -Infinity;
+    let coastVelocity = 0;
+    const coarsePointer = window.matchMedia("(pointer: coarse)").matches;
     const drift = [
       [-1.25, 0.9, 1.15, -0.85],
       [1.1, -0.7, -1.2, 0.8],
@@ -346,8 +356,31 @@ export default function VideoHome() {
       [-1.05, 0.65, 1.15, -0.7],
     ];
 
+    const onWheel = (event: WheelEvent) => {
+      if (reducedMotion || coarsePointer || effectScene !== null) return;
+      const unit = event.deltaMode === WheelEvent.DOM_DELTA_LINE
+        ? 16
+        : event.deltaMode === WheelEvent.DOM_DELTA_PAGE
+          ? window.innerHeight
+          : 1;
+      const impulse = clamp(event.deltaY * unit, -180, 180) * SCROLL_COAST_STRENGTH;
+      coastVelocity = lerp(coastVelocity, impulse, 0.46);
+      lastWheelAt = performance.now();
+    };
+    window.addEventListener("wheel", onWheel, { passive: true });
+
     const tick = (now: number) => {
       if (disposed) return;
+      if (
+        !reducedMotion
+        && !coarsePointer
+        && effectScene === null
+        && now - lastWheelAt > SCROLL_COAST_DELAY_MS
+        && Math.abs(coastVelocity) > 0.08
+      ) {
+        window.scrollBy({ top: coastVelocity, behavior: "auto" });
+        coastVelocity *= SCROLL_COAST_DAMPING;
+      }
       const target = window.scrollY;
       smoothedScroll.current = reducedMotion
         ? target
@@ -418,6 +451,7 @@ export default function VideoHome() {
     return () => {
       disposed = true;
       window.cancelAnimationFrame(frame);
+      window.removeEventListener("wheel", onWheel);
     };
   }, [effectScene, reducedMotion, started]);
 
@@ -614,9 +648,9 @@ export default function VideoHome() {
           <div className="film-plane">
             <div
               className="finale-film-image"
-              data-finale-image={assetUrl("/media/kt3.6-colour.png")}
+              data-finale-image={assetUrl("/media/kt3.6-colour.webp")}
               style={posterSources[scenes.length - 1]
-                ? { "--finale-image": `url(${assetUrl("/media/kt3.6-colour.png")})` } as CSSProperties
+                ? { "--finale-image": `url(${assetUrl("/media/kt3.6-colour.webp")})` } as CSSProperties
                 : undefined}
               aria-hidden="true"
             />
