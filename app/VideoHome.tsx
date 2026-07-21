@@ -47,8 +47,8 @@ const scenes: Scene[] = [
     video: assetUrl("/media/kt3.1-scroll.mp4"),
     poster: assetUrl("/media/kt3.1-poster.png"),
     lines: [
-      { text: "霧穿過山脊，墨沿石縫落進城市。", start: 0.34, end: 0.53, direction: "near-left" },
-      { text: "山與樓之間，葵青從海霧中醒來。", start: 0.64, end: 0.82, direction: "far-right" },
+      { text: "霧穿過山脊，墨沿石縫落進城市。", start: 0.32, end: 0.55, direction: "near-left" },
+      { text: "山與樓之間，葵青從海霧中醒來。", start: 0.62, end: 0.84, direction: "far-right" },
     ],
   },
   {
@@ -59,8 +59,8 @@ const scenes: Scene[] = [
     video: assetUrl("/media/kt3.2-scroll.mp4"),
     poster: assetUrl("/media/kt3.2-poster.png"),
     lines: [
-      { text: "茶湯拉成幼線，在蒸氣裏沖出清晨。", start: 0.27, end: 0.48, direction: "high-left" },
-      { text: "木屑隨刻刀落下，舊舖把手藝留在街角。", start: 0.61, end: 0.81, direction: "low-centre" },
+      { text: "茶湯拉成幼線，在蒸氣裏沖出清晨。", start: 0.25, end: 0.50, direction: "high-left" },
+      { text: "木屑隨刻刀落下，舊舖把手藝留在街角。", start: 0.59, end: 0.83, direction: "low-centre" },
     ],
   },
   {
@@ -71,8 +71,8 @@ const scenes: Scene[] = [
     video: assetUrl("/media/kt3.3-scroll.mp4"),
     poster: assetUrl("/media/kt3.3-poster.png"),
     lines: [
-      { text: "燈火沿着匠人的手藝，在夜色裏逐筆亮起。", start: 0.36, end: 0.56, direction: "high-right" },
-      { text: "金屬、竹影與人情，磨成葵涌的一夜光。", start: 0.66, end: 0.84, direction: "low-left" },
+      { text: "燈火沿着匠人的手藝，在夜色裏逐筆亮起。", start: 0.34, end: 0.58, direction: "high-right" },
+      { text: "金屬、竹影與人情，磨成葵涌的一夜光。", start: 0.64, end: 0.86, direction: "low-left" },
     ],
   },
   {
@@ -81,8 +81,8 @@ const scenes: Scene[] = [
     video: assetUrl("/media/kt3.4-scroll.mp4"),
     poster: assetUrl("/media/kt3.4-poster.png"),
     lines: [
-      { text: "吊臂提起晨霧，貨櫃把城市的脈搏排成長線。", start: 0.33, end: 0.54, direction: "near-left" },
-      { text: "潮水一進一退，海港仍把遠方送到眼前。", start: 0.65, end: 0.83, direction: "high-right" },
+      { text: "吊臂提起晨霧，貨櫃把城市的脈搏排成長線。", start: 0.31, end: 0.56, direction: "near-left" },
+      { text: "潮水一進一退，海港仍把遠方送到眼前。", start: 0.63, end: 0.85, direction: "high-right" },
     ],
   },
   {
@@ -93,8 +93,8 @@ const scenes: Scene[] = [
     video: assetUrl("/media/kt3.5-scroll.mp4"),
     poster: assetUrl("/media/kt3.5-poster.png"),
     lines: [
-      { text: "竹棚靠着海風搭起，一聲鑼鼓叫亮整個夜晚。", start: 0.34, end: 0.55, direction: "low-left" },
-      { text: "燈影照住台前台後，也照住一代代相聚的人。", start: 0.65, end: 0.84, direction: "far-right" },
+      { text: "竹棚靠着海風搭起，一聲鑼鼓叫亮整個夜晚。", start: 0.32, end: 0.57, direction: "low-left" },
+      { text: "燈影照住台前台後，也照住一代代相聚的人。", start: 0.63, end: 0.86, direction: "far-right" },
     ],
   },
 ];

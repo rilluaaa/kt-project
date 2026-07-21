@@ -69,7 +69,7 @@ test("uses blob seeking, uniform film timing and masked film transitions", async
   assert.match(source, /!video\.seeking/);
   assert.match(source, /currentTime = desired/);
   assert.match(source, /transition=\{transition\}/);
-  assert.match(ink, /transitionPeak = clamp\(uTransition/);
+  assert.match(ink, /float transitionInk = smoothstep/);
   assert.match(ink, /holdPresence = smoothstep/);
   assert.match(css, /min-height: 720vh/);
   assert.match(css, /\.transition-occluder/);
@@ -96,7 +96,7 @@ test("keeps captions monochrome, removes side labels and holds one seamless fina
   assert.doesNotMatch(css, /\.finale-backdrop/);
 });
 
-test("long press offers three replayable WebGL effects based on the live film frame", async () => {
+test("long press offers three replayable WebGL effects and a bounded paper-ink fluid trail", async () => {
   const page = await readFile(new URL("../app/VideoHome.tsx", import.meta.url), "utf8");
   const effect = await readFile(new URL("../app/SceneInteraction.tsx", import.meta.url), "utf8");
   const ink = await readFile(new URL("../app/ThreeFilmInk.tsx", import.meta.url), "utf8");
@@ -114,10 +114,16 @@ test("long press offers three replayable WebGL effects based on the live film fr
   assert.match(effect, /uTexture/);
   assert.match(ink, /uHold/);
   assert.match(ink, /capillary/);
-  assert.match(ink, /uniform vec2 uTrail\[20\]/);
-  assert.match(ink, /trailInk/);
-  assert.match(ink, /distanceToStroke/);
-  assert.match(ink, /\/ 2600/);
+  assert.match(ink, /INK_TRAIL_TUNING/);
+  assert.match(ink, /pointerLag: 0\.15/);
+  assert.match(ink, /trailLifetime: 1\.2/);
+  assert.match(ink, /wetDepositLifetime: 2\.2/);
+  assert.match(ink, /pressureIterations: 2/);
+  assert.match(ink, /new THREE\.WebGLRenderTarget/);
+  assert.match(ink, /lineDistance/);
+  assert.match(ink, /visibilitychange/);
+  assert.doesNotMatch(ink, /vec3 green|vec3 amber/);
+  assert.match(page, /start: 0\.32, end: 0\.55/);
 });
 
 test("keeps the physical opening ink and ships the replacement continuous soundtrack", async () => {

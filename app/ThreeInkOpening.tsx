@@ -29,6 +29,7 @@ const fragmentShader = /* glsl */ `
   uniform float uReady;
   uniform float uHover;
   uniform float uOpening;
+  uniform sampler2D uFluid;
 
   float hash(vec2 point) {
     return fract(sin(dot(point, vec2(127.1, 311.7))) * 43758.5453123);
@@ -76,6 +77,7 @@ const fragmentShader = /* glsl */ `
     float angle = atan(point.y, point.x);
 
     float paperGrain = noise(frag * 0.42) * 0.5 + noise(frag * 0.91) * 0.5;
+    vec2 fluid = texture2D(uFluid, frag / uResolution).rg;
     float fibres = fbm(vec2(angle * 2.15 - uTime * 0.016, distanceToCentre * 34.0 + uTime * 0.025));
     float veins = fbm(vec2(angle * 8.2 + fibres * 2.0, distanceToCentre * 86.0));
     float tide = fbm(point * 7.0 + vec2(uTime * 0.025, -uTime * 0.018));
@@ -115,8 +117,8 @@ const fragmentShader = /* glsl */ `
     vec2 pointerPoint = (frag - uPointer) / shortest;
     float pointerWet = smoothstep(0.035, 0.0, length(pointerPoint)) * uHover;
 
-    vec3 dryInk = vec3(0.016, 0.023, 0.019);
-    vec3 wetInk = vec3(0.045, 0.055, 0.046);
+    vec3 dryInk = vec3(0.008, 0.009, 0.008);
+    vec3 wetInk = vec3(0.023, 0.024, 0.022);
     vec3 colour = mix(dryInk, wetInk, wetHalo * 0.65 + paperGrain * 0.12);
     float alpha = core * (0.72 + sediment * 0.2) + wetHalo * 0.23 + capillary * 0.22 + droplets * 0.52 + pointerWet * 0.25;
     vec2 digitPoint = point * vec2(0.58, 1.42);
@@ -154,10 +156,49 @@ const fragmentShader = /* glsl */ `
       }
       float openingAlpha = openingWash * mix(0.0, 0.92, uOpening)
         + openingFront * 0.2 + openingGranules * 0.13 + splash * 0.58;
-      colour = mix(colour, vec3(0.022, 0.069, 0.047), openingFront * 0.28);
+      colour = mix(colour, vec3(0.005, 0.006, 0.005), openingFront * 0.38);
       alpha = max(alpha, openingAlpha);
     }
+    colour = mix(colour, vec3(0.004, 0.005, 0.004), smoothstep(0.02, 0.46, fluid.x));
+    alpha = max(alpha, fluid.x * (0.36 + paperGrain * 0.18) + fluid.y * 0.11);
     gl_FragColor = vec4(colour, clamp(alpha, 0.0, 0.97));
+  }
+`;
+
+/* A small dye field gives the opening bloom the same absorb-and-diffuse
+   behaviour as the pointer ink, without changing the loading composition. */
+const fluidFragment = /* glsl */ `
+  precision highp float;
+  varying vec2 vUv;
+  uniform sampler2D uInk;
+  uniform vec2 uTexel;
+  uniform vec2 uCentre;
+  uniform float uOpening;
+  uniform float uDelta;
+  uniform float uTime;
+
+  float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123); }
+  float noise(vec2 p) {
+    vec2 i = floor(p); vec2 f = fract(p); f = f * f * (3.0 - 2.0 * f);
+    return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y);
+  }
+
+  void main() {
+    vec2 warp = vec2(sin(vUv.y * 25.0 + uTime * 0.15), cos(vUv.x * 21.0 - uTime * 0.12)) * 0.0017;
+    vec4 centre = texture2D(uInk, vUv);
+    vec4 diffuse = (texture2D(uInk, vUv + vec2(uTexel.x, 0.0)) + texture2D(uInk, vUv - vec2(uTexel.x, 0.0))
+      + texture2D(uInk, vUv + vec2(0.0, uTexel.y)) + texture2D(uInk, vUv - vec2(0.0, uTexel.y))) * 0.25;
+    float pigment = mix(centre.r, diffuse.r, 0.115) * pow(0.018, uDelta / 1.25);
+    float wet = mix(centre.g, diffuse.g, 0.16) * pow(0.04, uDelta / 2.15);
+    float distanceToCentre = length((vUv + warp - uCentre) * vec2(1.0, 0.82));
+    float radius = mix(0.025, 0.48, pow(uOpening, 0.72));
+    float body = smoothstep(radius, radius * 0.18, distanceToCentre);
+    float fibres = noise(vUv * vec2(390.0, 280.0) + uTime * 0.12);
+    float broken = smoothstep(0.34, 0.92, fibres + body * 0.28);
+    float deposit = body * mix(0.42, 1.0, broken) * uOpening;
+    pigment = min(0.7, pigment + deposit * 0.11);
+    wet = min(1.0, wet + deposit * 0.22);
+    gl_FragColor = vec4(pigment, wet, 0.0, 1.0);
   }
 `;
 
@@ -197,6 +238,7 @@ export default function ThreeInkOpening({ progress, ready, opening, reducedMotio
       uReady: { value: 0 },
       uHover: { value: 0 },
       uOpening: { value: 0 },
+      uFluid: { value: null as THREE.Texture | null },
     };
     const geometry = new THREE.PlaneGeometry(2, 2);
     const material = new THREE.ShaderMaterial({
@@ -209,12 +251,27 @@ export default function ThreeInkOpening({ progress, ready, opening, reducedMotio
     });
     scene.add(new THREE.Mesh(geometry, material));
 
+    const fluidScene = new THREE.Scene();
+    const fluidUniforms = {
+      uInk: { value: null as THREE.Texture | null },
+      uTexel: { value: new THREE.Vector2(1, 1) },
+      uCentre: { value: new THREE.Vector2(0.5, 0.5) },
+      uOpening: { value: 0 },
+      uDelta: { value: 0 },
+      uTime: { value: 0 },
+    };
+    const fluidMaterial = new THREE.ShaderMaterial({ vertexShader, fragmentShader: fluidFragment, uniforms: fluidUniforms, depthTest: false, depthWrite: false });
+    fluidScene.add(new THREE.Mesh(geometry, fluidMaterial));
+
     const drawingBuffer = new THREE.Vector2();
     const pointer = new THREE.Vector2(window.innerWidth / 2, window.innerHeight / 2);
     const pointerTarget = pointer.clone();
     let disposed = false;
     let frame = 0;
     let visible = !document.hidden;
+    let lastFrame = performance.now();
+    let fluidRead: THREE.WebGLRenderTarget;
+    let fluidWrite: THREE.WebGLRenderTarget;
 
     const onPointerMove = (event: PointerEvent) => pointerTarget.set(event.clientX, window.innerHeight - event.clientY);
     const resize = () => {
@@ -225,20 +282,38 @@ export default function ThreeInkOpening({ progress, ready, opening, reducedMotio
       renderer.setSize(width, height, false);
       renderer.getDrawingBufferSize(drawingBuffer);
       uniforms.uResolution.value.copy(drawingBuffer);
+      fluidRead?.dispose();
+      fluidWrite?.dispose();
+      const quality = window.matchMedia("(pointer: coarse)").matches ? 0.34 : 0.46;
+      const fluidWidth = Math.max(96, Math.round(drawingBuffer.x * quality));
+      const fluidHeight = Math.max(96, Math.round(drawingBuffer.y * quality));
+      const options: THREE.RenderTargetOptions = { depthBuffer: false, stencilBuffer: false, minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, format: THREE.RGBAFormat, type: THREE.UnsignedByteType };
+      fluidRead = new THREE.WebGLRenderTarget(fluidWidth, fluidHeight, options);
+      fluidWrite = new THREE.WebGLRenderTarget(fluidWidth, fluidHeight, options);
+      fluidUniforms.uTexel.value.set(1 / fluidWidth, 1 / fluidHeight);
+      renderer.setRenderTarget(fluidRead); renderer.clear();
+      renderer.setRenderTarget(fluidWrite); renderer.clear();
+      renderer.setRenderTarget(null);
     };
     window.addEventListener("pointermove", onPointerMove, { passive: true });
     window.addEventListener("resize", resize);
-    const onVisibility = () => { visible = !document.hidden; };
+    const onVisibility = () => {
+      visible = !document.hidden;
+      lastFrame = performance.now();
+      if (visible && !frame) frame = window.requestAnimationFrame(draw);
+    };
     document.addEventListener("visibilitychange", onVisibility);
     resize();
 
     const draw = (now: number) => {
+      frame = 0;
       if (disposed) return;
       if (!visible) {
-        frame = window.requestAnimationFrame(draw);
         return;
       }
       const props = propsRef.current;
+      const delta = Math.min(0.034, Math.max(0.001, (now - lastFrame) / 1000));
+      lastFrame = now;
       const target = props.ready
         ? document.querySelector<HTMLElement>(".journey-start")
         : document.querySelector<HTMLElement>(".loading-mark strong");
@@ -259,6 +334,18 @@ export default function ThreeInkOpening({ progress, ready, opening, reducedMotio
       uniforms.uReady.value += ((props.ready ? 1 : 0) - uniforms.uReady.value) * 0.07;
       uniforms.uHover.value += ((hovering ? 1 : 0) - uniforms.uHover.value) * 0.11;
       uniforms.uOpening.value += ((props.opening ? 1 : 0) - uniforms.uOpening.value) * (props.opening ? 0.035 : 0.12);
+      fluidUniforms.uInk.value = fluidRead.texture;
+      fluidUniforms.uCentre.value.set(centreX / Math.max(1, window.innerWidth), 1 - (window.innerHeight - centreY) / Math.max(1, window.innerHeight));
+      fluidUniforms.uOpening.value = props.reducedMotion ? uniforms.uOpening.value * 0.16 : uniforms.uOpening.value;
+      fluidUniforms.uDelta.value = delta;
+      fluidUniforms.uTime.value = now * 0.001;
+      renderer.setRenderTarget(fluidWrite);
+      renderer.render(fluidScene, camera);
+      const previousFluid = fluidRead;
+      fluidRead = fluidWrite;
+      fluidWrite = previousFluid;
+      uniforms.uFluid.value = fluidRead.texture;
+      renderer.setRenderTarget(null);
       renderer.render(scene, camera);
       frame = window.requestAnimationFrame(draw);
     };
@@ -272,6 +359,9 @@ export default function ThreeInkOpening({ progress, ready, opening, reducedMotio
       document.removeEventListener("visibilitychange", onVisibility);
       geometry.dispose();
       material.dispose();
+      fluidMaterial.dispose();
+      fluidRead.dispose();
+      fluidWrite.dispose();
       renderer.dispose();
       renderer.domElement.remove();
     };
