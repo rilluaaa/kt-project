@@ -52,17 +52,15 @@ test("ships five native-quality short-GOP scroll films with exact posters", asyn
   assert.doesNotMatch(html, /ThreeMountainStage|ink-scroll-world\.glb/);
 });
 
-test("uses blob seeking, a brief opening beat and masked film transitions", async () => {
+test("uses blob seeking, uniform film timing and masked film transitions", async () => {
   const source = await readFile(new URL("../app/VideoHome.tsx", import.meta.url), "utf8");
   const ink = await readFile(new URL("../app/ThreeFilmInk.tsx", import.meta.url), "utf8");
   const css = await readFile(new URL("../app/video.css", import.meta.url), "utf8");
   assert.match(source, /function directedTimeline/);
-  assert.match(source, /const introScrollBand = 0\.04/);
-  assert.match(source, /return lerp\(0, motionStart, smooth\(p \/ introScrollBand\)\)/);
-  assert.match(source, /const startVelocity = 0\.24/);
+  assert.match(source, /function directedTimeline\(progress: number\)/);
+  assert.match(source, /return lerp\(0, 0\.995, clamp\(progress\)\)/);
   assert.match(source, /smoothedVideoTime\.current\[index\] = 0/);
-  assert.doesNotMatch(source, /p <= 0\.032/);
-  assert.match(source, /const motionStarts = \[0\.293, 0\.205, 0\.462, 0\.294, 0\.198\]/);
+  assert.doesNotMatch(source, /introScrollBand|motionStarts|startVelocity/);
   assert.match(source, /response\.blob\(\)/);
   assert.match(source, /Promise\.all\(indexes\.map/);
   assert.match(source, /loadedVideos\.current\.size === scenes\.length/);
@@ -73,7 +71,7 @@ test("uses blob seeking, a brief opening beat and masked film transitions", asyn
   assert.match(source, /transition=\{transition\}/);
   assert.match(ink, /transitionPeak = clamp\(uTransition/);
   assert.match(ink, /holdPresence = smoothstep/);
-  assert.match(css, /min-height: 560vh/);
+  assert.match(css, /min-height: 720vh/);
   assert.match(css, /\.transition-occluder/);
   assert.match(css, /object-fit: cover/);
   assert.doesNotMatch(css, /\.watermark-veil/);
@@ -88,11 +86,12 @@ test("keeps captions monochrome, removes side labels and holds one seamless fina
   assert.match(page, /caption\.scene\.id === "street" \? 0 : 1/);
   assert.match(page, /className="explore-page"/);
   assert.match(page, /className="explore-button"/);
-  assert.match(page, /熱熾葵青，[\s\S]*仍在每次相聚之間亮起。/);
+  assert.match(page, /熱熾葵青，[\s\S]*燈火未央。/);
   assert.match(css, /\.video-experience \.heritage \{[\s\S]*?color: #050807/);
   assert.match(css, /\.finale-film-image \{[\s\S]*?object-fit: cover/);
   assert.match(css, /\.explore-page \{[\s\S]*?background:/);
-  assert.match(css, /rgba\(16, 62, 44, 0\)/);
+  assert.match(css, /linear-gradient\(132deg/);
+  assert.doesNotMatch(css, /margin-top: -16vh/);
   assert.match(css, /\.explore-button \{[\s\S]*?background: #f5f2e8;[\s\S]*?color: #06100b/);
   assert.doesNotMatch(css, /\.finale-backdrop/);
 });

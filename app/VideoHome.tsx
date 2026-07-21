@@ -143,24 +143,10 @@ function buildSoundtrack(): AudioEngine | null {
   };
 }
 
-/* Give each chapter one short beat on its source painting, then jump across
-   the still lead-in baked into each film so movement answers the next scroll. */
-const motionStarts = [0.293, 0.205, 0.462, 0.294, 0.198];
-
-function directedTimeline(progress: number, sceneIndex: number) {
-  const p = clamp(progress);
-  const motionStart = motionStarts[sceneIndex] ?? 0.2;
-  const introScrollBand = 0.04;
-  if (p <= introScrollBand) {
-    return lerp(0, motionStart, smooth(p / introScrollBand));
-  }
-  const movingProgress = clamp((p - introScrollBand) / (1 - introScrollBand));
-  const startVelocity = 0.24;
-  const endVelocity = 0.58;
-  const curved = (-2 * movingProgress ** 3 + 3 * movingProgress ** 2)
-    + (movingProgress ** 3 - 2 * movingProgress ** 2 + movingProgress) * startVelocity
-    + (movingProgress ** 3 - movingProgress ** 2) * endVelocity;
-  return lerp(motionStart, 0.995, curved);
+/* Keep the source film's full timing intact; the scene height controls how
+   slowly that timeline is scrubbed instead of treating its opening specially. */
+function directedTimeline(progress: number) {
+  return lerp(0, 0.995, clamp(progress));
 }
 
 export default function VideoHome() {
@@ -368,7 +354,7 @@ export default function VideoHome() {
         sought.forEach((index) => {
           const video = videoRefs.current[index];
           if (!video || !Number.isFinite(video.duration) || video.duration <= 0) return;
-          const mapped = directedTimeline(progress[index] ?? 0, index);
+          const mapped = directedTimeline(progress[index] ?? 0);
           smoothedVideoTime.current[index] += (mapped - smoothedVideoTime.current[index]) * (reducedMotion ? 1 : 0.2);
           const desired = video.duration * smoothedVideoTime.current[index];
           if (!video.seeking && Math.abs(video.currentTime - desired) > 0.018) {
@@ -672,7 +658,7 @@ export default function VideoHome() {
             <div className="explore-wash" aria-hidden="true"><i /><i /><i /></div>
             <div className="explore-intro">
               <p>山、城、海與人情，仍有更多路徑等待展開。</p>
-              <h2 id="explore-title">熱熾葵青，<br />仍在每次相聚之間亮起。</h2>
+              <h2 id="explore-title">熱熾葵青，<br />燈火未央。</h2>
               <button
                 className="explore-button"
                 onClick={() => sectionRefs.current[0]?.scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth" })}
