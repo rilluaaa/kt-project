@@ -47,7 +47,7 @@ const scenes: Scene[] = [
     mobileVideo: assetUrl("/media/kt3.1-scroll-mobile.mp4"),
     poster: assetUrl("/media/kt3.1-poster.webp"),
     lines: [
-      { text: "葵青由昔日鄉村逐步發展成工商業與住宅並存的社區。\n山坡屋邨、街市、工場與海港聚集不同背景的居民，\n飲食文化、節慶習俗及傳統手藝亦在日常生活和工作之間延續，形成葵青獨有的地方記憶。", label: "葵青的文化土壤", start: 0.48, end: 0.88, direction: "far-right" },
+      { text: "葵青由昔日鄉村逐步發展成工商業與住宅並存的社區。山坡屋邨、\n街市、工場與海港聚集不同背景的居民，飲食文化、節慶習俗及\n傳統手藝亦在日常生活和工作之間延續，形成葵青獨有的地方記憶。", label: "葵青的文化土壤", start: 0.48, end: 0.88, direction: "far-right" },
     ],
   },
   {
@@ -58,8 +58,8 @@ const scenes: Scene[] = [
     mobileVideo: assetUrl("/media/kt3.2-scroll-mobile.mp4"),
     poster: assetUrl("/media/kt3.2-poster.webp"),
     lines: [
-      { text: "港式奶茶製作技藝屬於香港其中一項非物質文化遺產。\n師傅把拼配紅茶放入布袋漏勺，經煲茶、焗茶和反覆撞茶，再加入淡奶。\n這杯茶不只是飲品，也是葵涌茶餐廳、工友早晨與街坊生活共同累積的城市味道。", label: "港式奶茶製作技藝", start: 0.18, end: 0.50, direction: "high-left" },
-      { text: "木雕刻先以畫稿定形，再用鑿刀刻出文字、花紋與建築構件。\n刀痕深淺與方向決定作品層次，是香港其中一項非物質文化遺產。\n這門手藝曾在葵涌的香港非物質文化遺產考察中介紹，讓工業社區師傅的經驗被重新看見。", label: "木雕刻技藝", start: 0.54, end: 0.88, direction: "low-centre" },
+      { text: "港式奶茶製作技藝屬於香港其中一項非物質文化遺產。師傅把拼配紅茶\n放入布袋漏勺，經煲茶、焗茶和反覆撞茶，再加入淡奶。這杯茶不只是\n飲品，也是葵涌茶餐廳、工友早晨與街坊生活共同累積的城市味道。", label: "港式奶茶製作技藝", start: 0.18, end: 0.50, direction: "high-left" },
+      { text: "木雕刻先以畫稿定形，再用鑿刀刻出文字、花紋與建築構件。刀痕深淺\n與方向決定作品層次，是香港其中一項非物質文化遺產。這門手藝曾在葵涌\n的香港非物質文化遺產考察中介紹，讓工業社區師傅的經驗被重新看見。", label: "木雕刻技藝", start: 0.54, end: 0.88, direction: "low-centre" },
     ],
   },
   {
@@ -70,8 +70,8 @@ const scenes: Scene[] = [
     mobileVideo: assetUrl("/media/kt3.3-scroll-mobile.mp4"),
     poster: assetUrl("/media/kt3.3-poster.webp"),
     lines: [
-      { text: "霓虹光管製作及造型技藝屬於香港其中一項非物質文化遺產。\n屈管師傅按圖把玻璃管逐段加熱、彎曲和焊接，再抽走空氣、注入氣體及接駁電極。\n每一道發光文字與線條，都由雙手、經驗和精準火候塑造而成。", label: "霓虹光管製作及造型技藝", start: 0.20, end: 0.52, direction: "high-right" },
-      { text: "葵涌的工場、舊式店舖與工業大廈，為招牌設計和霓虹製作提供工作空間。\n屈管師傅把漢字筆畫轉化為發光線條，讓商店名稱在夜裡被看見。\n這些霓虹光影亦逐漸成為葵青工業社區與街道生活的集體記憶。", label: "霓虹與葵涌工場", start: 0.56, end: 0.88, direction: "low-left" },
+      { text: "霓虹光管製作及造型技藝屬於香港其中一項非物質文化遺產。屈管師傅\n按圖把玻璃管逐段加熱、彎曲和焊接，再抽走空氣、注入氣體及接駁\n電極。每一道發光文字與線條，都由雙手、經驗和精準火候塑造而成。", label: "霓虹光管製作及造型技藝", start: 0.20, end: 0.52, direction: "high-right" },
+      { text: "葵涌的工場、舊式店舖與工業大廈，為招牌與霓虹製作提供空間。\n屈管師傅把漢字筆畫轉化成發光線條，讓商店名稱在夜裡被看見。\n這些霓虹光影亦逐漸成為葵青工業社區與街道生活的集體記憶。", label: "霓虹與葵涌工場", start: 0.56, end: 0.88, direction: "low-left" },
     ],
   },
   {
@@ -81,8 +81,8 @@ const scenes: Scene[] = [
     mobileVideo: assetUrl("/media/kt3.4-scroll-mobile.mp4"),
     poster: assetUrl("/media/kt3.4-poster.webp"),
     lines: [
-      { text: "葵青貨櫃碼頭是理解這個地區不可缺少的背景。\n港池、貨櫃場、工業區與交通網絡日夜運作，連接海路與陸路運輸，\n不但改變沿岸景觀，也塑造居民的工作節奏、生活方式及跨越世代的社區記憶。", label: "葵青的產業背景", start: 0.20, end: 0.52, direction: "near-left" },
-      { text: "港口為葵青帶來工人、貨物和不同文化，茶餐廳、招牌工場及傳統手藝亦在產業社區中落地。\n宏大的物流系統與細微的生活技藝在海旁並置，\n讓海港不只是運輸設施，也成為理解葵青居民日常生活與地方身份的重要線索。", label: "港口與生活文化", start: 0.56, end: 0.88, direction: "high-right" },
+      { text: "葵青貨櫃碼頭是理解這個地區不可缺少的背景。港池、貨櫃場、\n工業區與交通網絡日夜運作，連接海路與陸路運輸，不但改變沿岸\n景觀，也塑造居民的工作節奏、生活方式及跨越世代的社區記憶。", label: "葵青的產業背景", start: 0.20, end: 0.52, direction: "near-left" },
+      { text: "港口為葵青帶來工人、貨物和不同文化，茶餐廳、招牌工場及傳統手藝亦在\n產業社區中落地。宏大的物流系統與細微的生活技藝在海旁並置，讓海港\n不只是運輸設施，也成為理解葵青居民日常生活與地方身份的重要線索。", label: "港口與生活文化", start: 0.56, end: 0.88, direction: "high-right" },
     ],
   },
   {
@@ -93,8 +93,8 @@ const scenes: Scene[] = [
     mobileVideo: assetUrl("/media/kt3.5-scroll-mobile.mp4"),
     poster: assetUrl("/media/kt3.5-poster.webp"),
     lines: [
-      { text: "戲棚搭建技藝被列入香港非物質文化遺產。\n師傅按照場地、觀眾人數和演出需要，以竹、杉木及鋅鐵片搭成可拆卸的臨時劇場。\n棚內會劃分舞台、後台與觀眾席，讓神功戲、節慶活動及宗教儀式在社區空間中臨時落地。", label: "戲棚搭建技藝", start: 0.20, end: 0.52, direction: "low-left" },
-      { text: "葵青曾舉辦戲棚傳統文化活動，以臨時戲棚連結粵劇、節慶、飲食與街坊參與。\n戲棚搭建技藝因此不只是建築方法，\n更是一項讓居民相聚的香港非物質文化遺產；棚架搭起舞台，同時也重新連起社區關係。", label: "戲棚與葵青社區", start: 0.56, end: 0.88, direction: "far-right" },
+      { text: "戲棚搭建技藝被列入香港非物質文化遺產。師傅會因應場地、觀眾人數，\n以及演出需要，以竹、杉木和鋅鐵片搭成可拆卸劇場。棚內劃分舞台，\n後台與觀眾席，讓神功戲、節慶活動和宗教儀式在社區空間臨時落地。", label: "戲棚搭建技藝", start: 0.20, end: 0.52, direction: "low-left" },
+      { text: "葵青曾舉辦戲棚傳統文化活動，以臨時戲棚連結粵劇、節慶與飲食，\n也讓街坊共同參與。戲棚搭建技藝不只是建築方法，更是一項讓居民\n相聚的香港非物質文化遺產；棚架搭起舞台，也重新連起社區關係。", label: "戲棚與葵青社區", start: 0.56, end: 0.88, direction: "far-right" },
     ],
   },
 ];

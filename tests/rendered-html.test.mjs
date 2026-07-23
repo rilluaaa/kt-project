@@ -100,7 +100,9 @@ test("ships nine long-form heritage captions with enlarged contextual labels", a
     const captionText = JSON.parse(`"${encodedText}"`);
     const visibleLength = [...captionText.replaceAll("\n", "")].length;
     assert.ok(visibleLength >= 75 && visibleLength <= 105, `${label} should remain within the approved long-form range`);
-    assert.equal(captionText.split("\n").length, 3, `${label} should render as three deliberate lines`);
+    const lineLengths = captionText.split("\n").map((line) => [...line].length);
+    assert.equal(lineLengths.length, 3, `${label} should render as three deliberate lines`);
+    assert.ok(Math.max(...lineLengths) - Math.min(...lineLengths) <= 3, `${label} should keep all three lines visually balanced`);
   }
   assert.doesNotMatch(page, /從地方走近非遺|香港非遺|葵涌非遺遊蹤/);
   assert.match(page, /className="explore-page"/);
