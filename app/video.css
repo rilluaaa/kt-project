@@ -499,7 +499,7 @@ html.scroll-locked body {
 }
 
 .video-experience .scroll-story { position: relative; z-index: 2; }
-.story-scene { position: relative; min-height: 720vh; pointer-events: none; }
+.story-scene { position: relative; min-height: 650vh; pointer-events: none; }
 
 /* The sixth painting completes the film, then a separate green page rises from
    below so the final action feels like a new destination. */
@@ -735,7 +735,7 @@ html.scroll-locked body {
   .caption-low-centre { right: 3vw; }
   .caption-line { width: min(42em, 92vw); font-size: clamp(.92rem, 3.25vw, 1.22rem); letter-spacing: .035em; }
   .video-experience .heritage { grid-column: 1; white-space: normal; }
-  .story-scene { min-height: 680vh; }
+  .story-scene { min-height: 620vh; }
   .finale-copy { margin-bottom: 11vh; }
   .finale-copy-hold { height: 34vh; }
   .explore-page { grid-template-columns: 1fr; gap: 4rem; padding-inline: max(2rem, 7vw); }
@@ -751,7 +751,7 @@ html.scroll-locked body {
   .scene-film { object-fit: cover; }
   .caption-line { width: 92vw; font-size: clamp(.82rem, 3.55vw, .98rem); letter-spacing: .025em; line-height: 1.46; }
   .video-experience .heritage { font-size: .68rem; letter-spacing: .1em; }
-  .story-scene { min-height: 650vh; }
+  .story-scene { min-height: 590vh; }
   .finale-copy { margin-bottom: 14vh; }
   .finale-copy h2 { font-size: clamp(2.55rem, 12vw, 4.8rem); }
   .explore-page { min-height: 130vh; padding-top: 8rem; }

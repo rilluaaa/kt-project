@@ -18,7 +18,9 @@ type Props = {
  * These values are deliberately kept together so the ink can be tuned in one place.
  */
 export const INK_TRAIL_TUNING = {
-  pointerLag: 0.17,
+  // Keep the live wet edge close to the hardware pointer; the framebuffer
+  // still supplies the softer, slower residue behind it.
+  pointerLag: 0.46,
   inkAmount: 0.62,
   trailLifetime: 1.2,
   wetDepositLifetime: 2.2,

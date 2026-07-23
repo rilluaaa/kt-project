@@ -62,8 +62,8 @@ test("uses desktop blob seeking, lightly accelerated film timing and masked film
   assert.match(source, /function directedTimeline\(progress: number\)/);
   assert.match(source, /return lerp\(0, 0\.995, clamp\(progress\)\)/);
   assert.match(source, /LIGHT_SCROLL_ACCELERATION = 0\.06/);
-  assert.match(source, /SCROLL_COAST_STRENGTH = 0\.035/);
-  assert.match(source, /SCROLL_COAST_DAMPING = 0\.87/);
+  assert.match(source, /SCROLL_COAST_STRENGTH = 0\.048/);
+  assert.match(source, /SCROLL_COAST_DAMPING = 0\.9/);
   assert.match(source, /window\.scrollBy\(\{ top: coastVelocity/);
   assert.match(source, /window\.addEventListener\("wheel", onWheel/);
   assert.match(source, /lerp\(target, smoothedScroll\.current, LIGHT_SCROLL_ACCELERATION\)/);
@@ -81,7 +81,7 @@ test("uses desktop blob seeking, lightly accelerated film timing and masked film
   assert.match(source, /transition=\{transition\}/);
   assert.match(ink, /float transitionInk = smoothstep/);
   assert.match(ink, /holdPresence = smoothstep/);
-  assert.match(css, /min-height: 720vh/);
+  assert.match(css, /min-height: 650vh/);
   assert.match(css, /\.transition-occluder/);
   assert.match(css, /object-fit: cover/);
   assert.doesNotMatch(css, /\.watermark-veil/);
@@ -140,7 +140,7 @@ test("long press offers three replayable WebGL effects and a bounded paper-ink f
   assert.match(ink, /uHold/);
   assert.match(ink, /capillary/);
   assert.match(ink, /INK_TRAIL_TUNING/);
-  assert.match(ink, /pointerLag: 0\.17/);
+  assert.match(ink, /pointerLag: 0\.46/);
   assert.match(ink, /trailLifetime: 1\.2/);
   assert.match(ink, /wetDepositLifetime: 2\.2/);
   assert.match(ink, /pressureIterations: 2/);

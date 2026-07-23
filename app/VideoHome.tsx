@@ -117,8 +117,8 @@ const lerp = (a: number, b: number, amount: number) => a + (b - a) * amount;
 // Keep only a trace of the former catch-up feel. A value near zero stays close
 // to the physical scroll position and avoids the slow-start / fast-finish jump.
 const LIGHT_SCROLL_ACCELERATION = 0.06;
-const SCROLL_COAST_STRENGTH = 0.035;
-const SCROLL_COAST_DAMPING = 0.87;
+const SCROLL_COAST_STRENGTH = 0.048;
+const SCROLL_COAST_DAMPING = 0.9;
 const SCROLL_COAST_DELAY_MS = 72;
 
 function buildSoundtrack(): AudioEngine | null {
