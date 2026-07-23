@@ -28,10 +28,10 @@ test("server-renders the five-scene 熱熾葵青 film journey and colour finale"
   for (const title of ["山城入墨", "葵涌早茶", "夜工燃光", "海港成脈", "鑼鼓入海"]) {
     assert.match(html, new RegExp(title));
   }
-  assert.match(html, /港式奶茶製作技藝是香港非遺/);
-  assert.match(html, /木雕刻以畫稿定形，再用鑿刀刻出文字與花紋/);
-  assert.match(html, /它亦列入葵涌非遺遊蹤/);
-  assert.match(html, /戲棚搭建技藝是香港非遺/);
+  assert.match(html, /港式奶茶製作技藝屬於香港其中一項非物質文化遺產/);
+  assert.match(html, /木雕刻先以畫稿定形/);
+  assert.match(html, /葵青貨櫃碼頭是理解這個地區不可缺少的背景/);
+  assert.match(html, /戲棚搭建技藝被列入香港非物質文化遺產/);
   assert.match(html, /kt3\.6-colour\.webp/);
   assert.match(html, /探索葵青/);
   assert.match(html, /山海相接/);
@@ -87,27 +87,29 @@ test("uses desktop blob seeking, lightly accelerated film timing and masked film
   assert.doesNotMatch(css, /\.watermark-veil/);
 });
 
-test("keeps captions monochrome, removes side labels and holds one seamless finale plane", async () => {
+test("ships nine long-form heritage captions with enlarged contextual labels", async () => {
   const page = await readFile(new URL("../app/VideoHome.tsx", import.meta.url), "utf8");
   const css = await readFile(new URL("../app/video.css", import.meta.url), "utf8");
   assert.doesNotMatch(page, /className="place"/);
   assert.match(page, /film-scene--final/);
   assert.match(page, /finaleFilmRef/);
-  assert.match(page, /className="heritage">\{caption\.label\}/);
+  assert.match(page, /className=\{`heritage heritage--\$\{caption\.scene\.id\}`\}/);
   const captionEntries = [...page.matchAll(/\{ text: "((?:[^"\\]|\\.)+)", label: "([^"]+)"/g)];
-  assert.equal(captionEntries.length, 10);
+  assert.equal(captionEntries.length, 9);
   for (const [, encodedText, label] of captionEntries) {
     const captionText = JSON.parse(`"${encodedText}"`);
     const visibleLength = [...captionText.replaceAll("\n", "")].length;
-    assert.ok(visibleLength >= 45 && visibleLength <= 55, `${label} should remain close to 50 characters`);
+    assert.ok(visibleLength >= 75 && visibleLength <= 105, `${label} should remain within the approved long-form range`);
     assert.equal(captionText.split("\n").length, 3, `${label} should render as three deliberate lines`);
   }
+  assert.doesNotMatch(page, /從地方走近非遺|香港非遺|葵涌非遺遊蹤/);
   assert.match(page, /className="explore-page"/);
   assert.match(page, /className="finale-copy-hold"/);
   assert.match(css, /\.finale-copy-hold \{[\s\S]*?height: 44vh/);
   assert.match(page, /className="explore-button"/);
   assert.match(page, /熱熾葵青，[\s\S]*燈火未央。/);
-  assert.match(css, /\.video-experience \.heritage \{[\s\S]*?color: #050807/);
+  assert.match(css, /\.video-experience \.heritage \{[\s\S]*?color: #24483a/);
+  assert.match(css, /\.video-experience \.heritage--night-craft,[\s\S]*?color: #d1ad70/);
   assert.match(css, /\.caption-line \{[\s\S]*?white-space: pre-line/);
   assert.match(css, /\.finale-film-image \{[\s\S]*?background: var\(--finale-image\) center \/ cover no-repeat/);
   assert.match(css, /\.explore-page \{[\s\S]*?background:/);

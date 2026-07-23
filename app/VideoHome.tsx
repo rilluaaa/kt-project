@@ -47,8 +47,7 @@ const scenes: Scene[] = [
     mobileVideo: assetUrl("/media/kt3.1-scroll-mobile.mp4"),
     poster: assetUrl("/media/kt3.1-poster.webp"),
     lines: [
-      { text: "非物質文化遺產不是一件靜止展品，\n而是由人傳承的技藝、習俗與生活知識。\n葵青山城社區，正是文化延續的日常場景。", label: "從地方走近非遺", start: 0.20, end: 0.52, direction: "near-left" },
-      { text: "葵青由鄉村發展成工商業與住宅社區，\n工場、街市和屋邨聚集不同世代居民，\n飲食與手工技藝亦在生活和工作之間流傳。", label: "葵青的文化土壤", start: 0.56, end: 0.88, direction: "far-right" },
+      { text: "葵青由昔日鄉村逐步發展成工商業與住宅並存的社區。\n山坡屋邨、街市、工場與海港聚集不同背景的居民，\n飲食文化、節慶習俗及傳統手藝亦在日常生活和工作之間延續，形成葵青獨有的地方記憶。", label: "葵青的文化土壤", start: 0.48, end: 0.88, direction: "far-right" },
     ],
   },
   {
@@ -59,8 +58,8 @@ const scenes: Scene[] = [
     mobileVideo: assetUrl("/media/kt3.2-scroll-mobile.mp4"),
     poster: assetUrl("/media/kt3.2-poster.webp"),
     lines: [
-      { text: "港式奶茶製作技藝是香港非遺，\n以布袋漏勺沖泡拼配紅茶，再加入淡奶。\n在葵涌的茶餐廳日常裡，它連起工友、街坊與早晨。", label: "港式奶茶製作技藝", start: 0.18, end: 0.50, direction: "high-left" },
-      { text: "木雕刻以畫稿定形，再用鑿刀刻出文字與花紋。\n它亦列入葵涌非遺遊蹤，\n讓工業區內默默工作的師傅與傳統手藝被重新看見。", label: "木雕刻技藝", start: 0.54, end: 0.86, direction: "low-centre" },
+      { text: "港式奶茶製作技藝屬於香港其中一項非物質文化遺產。\n師傅把拼配紅茶放入布袋漏勺，經煲茶、焗茶和反覆撞茶，再加入淡奶。\n這杯茶不只是飲品，也是葵涌茶餐廳、工友早晨與街坊生活共同累積的城市味道。", label: "港式奶茶製作技藝", start: 0.18, end: 0.50, direction: "high-left" },
+      { text: "木雕刻先以畫稿定形，再用鑿刀刻出文字、花紋與建築構件。\n刀痕深淺與方向決定作品層次，是香港其中一項非物質文化遺產。\n這門手藝曾在葵涌的香港非物質文化遺產考察中介紹，讓工業社區師傅的經驗被重新看見。", label: "木雕刻技藝", start: 0.54, end: 0.88, direction: "low-centre" },
     ],
   },
   {
@@ -71,8 +70,8 @@ const scenes: Scene[] = [
     mobileVideo: assetUrl("/media/kt3.3-scroll-mobile.mp4"),
     poster: assetUrl("/media/kt3.3-poster.webp"),
     lines: [
-      { text: "霓虹光管製作及造型是香港非遺，\n師傅把玻璃管加熱屈曲，再抽真空、注入氣體。\n每一道發光字形，都由手藝逐筆塑造。", label: "霓虹光管製作及造型技藝", start: 0.20, end: 0.52, direction: "high-right" },
-      { text: "霓虹技藝亦列入葵涌非遺遊蹤。\n區內工場與舊式店舖，讓招牌製作貼近工業日常，\n燈光因而成為葵青夜色的一部分。", label: "霓虹與葵涌工場", start: 0.56, end: 0.88, direction: "low-left" },
+      { text: "霓虹光管製作及造型技藝屬於香港其中一項非物質文化遺產。\n屈管師傅按圖把玻璃管逐段加熱、彎曲和焊接，再抽走空氣、注入氣體及接駁電極。\n每一道發光文字與線條，都由雙手、經驗和精準火候塑造而成。", label: "霓虹光管製作及造型技藝", start: 0.20, end: 0.52, direction: "high-right" },
+      { text: "葵涌的工場、舊式店舖與工業大廈，為招牌設計和霓虹製作提供工作空間。\n屈管師傅把漢字筆畫轉化為發光線條，讓商店名稱在夜裡被看見。\n這些霓虹光影亦逐漸成為葵青工業社區與街道生活的集體記憶。", label: "霓虹與葵涌工場", start: 0.56, end: 0.88, direction: "low-left" },
     ],
   },
   {
@@ -82,8 +81,8 @@ const scenes: Scene[] = [
     mobileVideo: assetUrl("/media/kt3.4-scroll-mobile.mp4"),
     poster: assetUrl("/media/kt3.4-poster.webp"),
     lines: [
-      { text: "貨櫃碼頭本身並不是非遺，\n卻是理解葵青不可缺少的地方背景。\n港池、工業區與交通網絡，塑造居民的工作與社區記憶。", label: "葵青的產業背景", start: 0.20, end: 0.52, direction: "near-left" },
-      { text: "非遺依靠人和生活環境延續，\n港口匯聚工人、貨物與不同文化，\n也與奶茶、招牌及工場手藝共同構成葵青的產業社區。", label: "港口與生活文化", start: 0.56, end: 0.88, direction: "high-right" },
+      { text: "葵青貨櫃碼頭是理解這個地區不可缺少的背景。\n港池、貨櫃場、工業區與交通網絡日夜運作，連接海路與陸路運輸，\n不但改變沿岸景觀，也塑造居民的工作節奏、生活方式及跨越世代的社區記憶。", label: "葵青的產業背景", start: 0.20, end: 0.52, direction: "near-left" },
+      { text: "港口為葵青帶來工人、貨物和不同文化，茶餐廳、招牌工場及傳統手藝亦在產業社區中落地。\n宏大的物流系統與細微的生活技藝在海旁並置，\n讓海港不只是運輸設施，也成為理解葵青居民日常生活與地方身份的重要線索。", label: "港口與生活文化", start: 0.56, end: 0.88, direction: "high-right" },
     ],
   },
   {
@@ -94,8 +93,8 @@ const scenes: Scene[] = [
     mobileVideo: assetUrl("/media/kt3.5-scroll-mobile.mp4"),
     poster: assetUrl("/media/kt3.5-poster.webp"),
     lines: [
-      { text: "戲棚搭建技藝是香港非遺，\n師傅以竹、杉和鋅鐵片搭成可拆卸的臨時劇場。\n它承載神功戲，也配合節慶與宗教儀式。", label: "戲棚搭建技藝", start: 0.20, end: 0.52, direction: "low-left" },
-      { text: "葵青曾舉辦戲棚傳統文化節，\n以戲棚、粵劇與節慶活動讓街坊共同參與。\n這項技藝不只搭起舞台，也連起社區關係。", label: "戲棚與葵青社區", start: 0.56, end: 0.88, direction: "far-right" },
+      { text: "戲棚搭建技藝被列入香港非物質文化遺產。\n師傅按照場地、觀眾人數和演出需要，以竹、杉木及鋅鐵片搭成可拆卸的臨時劇場。\n棚內會劃分舞台、後台與觀眾席，讓神功戲、節慶活動及宗教儀式在社區空間中臨時落地。", label: "戲棚搭建技藝", start: 0.20, end: 0.52, direction: "low-left" },
+      { text: "葵青曾舉辦戲棚傳統文化活動，以臨時戲棚連結粵劇、節慶、飲食與街坊參與。\n戲棚搭建技藝因此不只是建築方法，\n更是一項讓居民相聚的香港非物質文化遺產；棚架搭起舞台，同時也重新連起社區關係。", label: "戲棚與葵青社區", start: 0.56, end: 0.88, direction: "far-right" },
     ],
   },
 ];
@@ -648,7 +647,7 @@ export default function VideoHome() {
           return (
             <div className={`cinematic-caption caption-${caption.direction}${visible ? " is-visible" : ""}`} key={`${caption.scene.id}-${caption.lineIndex}`}>
               <p className="caption-line">{caption.text}</p>
-              <p className="heritage">{caption.label}</p>
+              <p className={`heritage heritage--${caption.scene.id}`}>{caption.label}</p>
             </div>
           );
         })}

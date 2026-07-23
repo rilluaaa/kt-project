@@ -395,24 +395,31 @@ html.scroll-locked body {
 .caption-low-left.is-visible { transform: translate3d(0, 0, 0) rotateX(-2deg) scale(1); }
 
 .caption-line {
-  width: min(32em, 88vw);
+  width: min(42em, 88vw);
   margin: 0;
   font-family: var(--serif);
-  font-size: clamp(1.05rem, 1.75vw, 1.78rem);
-  letter-spacing: .07em;
-  line-height: 1.38;
+  font-size: clamp(.96rem, 1.42vw, 1.48rem);
+  letter-spacing: .045em;
+  line-height: 1.5;
   white-space: pre-line;
   text-wrap: pretty;
 }
 
 .video-experience .heritage {
   grid-column: 1;
-  margin: .12rem 0 0;
-  color: #050807;
-  font-size: .58rem;
-  letter-spacing: .12em;
+  margin: .28rem 0 0;
+  color: #24483a;
+  font-size: clamp(.72rem, .82vw, .88rem);
+  font-weight: 650;
+  letter-spacing: .14em;
   white-space: nowrap;
   text-shadow: 0 0 .35rem rgba(250, 247, 236, 1), 0 0 1rem rgba(250, 247, 236, .96), 0 0 2rem rgba(250, 247, 236, .84);
+}
+
+.video-experience .heritage--night-craft,
+.video-experience .heritage--opera {
+  color: #d1ad70;
+  text-shadow: 0 1px .3rem rgba(3, 10, 6, .96), 0 0 1rem rgba(3, 10, 6, .9), 0 0 2rem rgba(3, 10, 6, .76);
 }
 
 /* A wet irregular pool follows the pointer. The WebGL layer adds capillary
@@ -726,7 +733,7 @@ html.scroll-locked body {
   .caption-far-right,
   .caption-high-right,
   .caption-low-centre { right: 3vw; }
-  .caption-line { width: min(34em, 92vw); font-size: clamp(1rem, 3.6vw, 1.32rem); letter-spacing: .05em; }
+  .caption-line { width: min(42em, 92vw); font-size: clamp(.92rem, 3.25vw, 1.22rem); letter-spacing: .035em; }
   .video-experience .heritage { grid-column: 1; white-space: normal; }
   .story-scene { min-height: 680vh; }
   .finale-copy { margin-bottom: 11vh; }
@@ -742,7 +749,8 @@ html.scroll-locked body {
   .video-experience .journey-start { width: 7.3rem; height: 7.3rem; }
   .film-plane { inset: 0; }
   .scene-film { object-fit: cover; }
-  .caption-line { width: 92vw; font-size: clamp(.94rem, 4vw, 1.1rem); letter-spacing: .04em; line-height: 1.42; }
+  .caption-line { width: 92vw; font-size: clamp(.82rem, 3.55vw, .98rem); letter-spacing: .025em; line-height: 1.46; }
+  .video-experience .heritage { font-size: .68rem; letter-spacing: .1em; }
   .story-scene { min-height: 650vh; }
   .finale-copy { margin-bottom: 14vh; }
   .finale-copy h2 { font-size: clamp(2.55rem, 12vw, 4.8rem); }
