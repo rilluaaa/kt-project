@@ -28,8 +28,10 @@ test("server-renders the five-scene 熱熾葵青 film journey and colour finale"
   for (const title of ["山城入墨", "葵涌早茶", "夜工燃光", "海港成脈", "鑼鼓入海"]) {
     assert.match(html, new RegExp(title));
   }
-  assert.match(html, /茶湯拉成幼線，在蒸氣裏沖出清晨。/);
-  assert.match(html, /木屑隨刻刀落下，舊舖把手藝留在街角。/);
+  assert.match(html, /港式奶茶製作技藝是香港非遺/);
+  assert.match(html, /木雕刻以畫稿定形，再用鑿刀刻出文字與花紋/);
+  assert.match(html, /它亦列入葵涌非遺遊蹤/);
+  assert.match(html, /戲棚搭建技藝是香港非遺/);
   assert.match(html, /kt3\.6-colour\.webp/);
   assert.match(html, /探索葵青/);
   assert.match(html, /山海相接/);
@@ -91,13 +93,22 @@ test("keeps captions monochrome, removes side labels and holds one seamless fina
   assert.doesNotMatch(page, /className="place"/);
   assert.match(page, /film-scene--final/);
   assert.match(page, /finaleFilmRef/);
-  assert.match(page, /caption\.scene\.id === "street" \? 0 : 1/);
+  assert.match(page, /className="heritage">\{caption\.label\}/);
+  const captionEntries = [...page.matchAll(/\{ text: "((?:[^"\\]|\\.)+)", label: "([^"]+)"/g)];
+  assert.equal(captionEntries.length, 10);
+  for (const [, encodedText, label] of captionEntries) {
+    const captionText = JSON.parse(`"${encodedText}"`);
+    const visibleLength = [...captionText.replaceAll("\n", "")].length;
+    assert.ok(visibleLength >= 45 && visibleLength <= 55, `${label} should remain close to 50 characters`);
+    assert.equal(captionText.split("\n").length, 3, `${label} should render as three deliberate lines`);
+  }
   assert.match(page, /className="explore-page"/);
   assert.match(page, /className="finale-copy-hold"/);
   assert.match(css, /\.finale-copy-hold \{[\s\S]*?height: 44vh/);
   assert.match(page, /className="explore-button"/);
   assert.match(page, /熱熾葵青，[\s\S]*燈火未央。/);
   assert.match(css, /\.video-experience \.heritage \{[\s\S]*?color: #050807/);
+  assert.match(css, /\.caption-line \{[\s\S]*?white-space: pre-line/);
   assert.match(css, /\.finale-film-image \{[\s\S]*?background: var\(--finale-image\) center \/ cover no-repeat/);
   assert.match(css, /\.explore-page \{[\s\S]*?background:/);
   assert.match(css, /linear-gradient\(132deg/);
@@ -135,7 +146,7 @@ test("long press offers three replayable WebGL effects and a bounded paper-ink f
   assert.match(ink, /window\.removeEventListener\("pointermove", onPointerMove\)/);
   assert.match(ink, /visibilitychange/);
   assert.doesNotMatch(ink, /vec3 green|vec3 amber/);
-  assert.match(page, /start: 0\.32, end: 0\.55/);
+  assert.match(page, /start: 0\.20, end: 0\.52/);
 });
 
 test("preloads every compact 1080p-class mobile film before entry", async () => {
