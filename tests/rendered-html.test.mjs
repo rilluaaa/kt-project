@@ -2,12 +2,12 @@ import assert from "node:assert/strict";
 import { readFile, stat } from "node:fs/promises";
 import test from "node:test";
 
-async function render() {
+async function render(path = "/") {
   const workerUrl = new URL("../dist/server/index.js", import.meta.url);
   workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}`);
   const { default: worker } = await import(workerUrl.href);
   return worker.fetch(
-    new Request("http://localhost/", { headers: { accept: "text/html" } }),
+    new Request(`http://localhost${path}`, { headers: { accept: "text/html" } }),
     { ASSETS: { fetch: async () => new Response("Not found", { status: 404 }) } },
     { waitUntil() {}, passThroughOnException() {} },
   );
@@ -38,6 +38,44 @@ test("server-renders the five-scene 熱熾葵青 film journey and colour finale"
   assert.match(html, /工藝在場/);
   assert.match(html, /燈火相聚/);
   assert.doesNotMatch(html, /兩幕試演完成|餘下七幕|第一幕|第二幕|故事進度/);
+});
+
+test("server-renders the official-source 葵青七藝 map and phase-one atlas", async () => {
+  const response = await render("/explore");
+  assert.equal(response.status, 200);
+  const html = await response.text();
+  const mapSource = await readFile(new URL("../app/explore/ExploreMap.tsx", import.meta.url), "utf8");
+  const dataSource = await readFile(new URL("../app/explore/heritageData.ts", import.meta.url), "utf8");
+  assert.match(html, /<title>葵青七藝遊｜熱熾葵青<\/title>/);
+  assert.match(html, /葵青七藝遊/);
+  assert.match(html, /kwai-tsing-seven-arts-map\.jpeg/);
+  for (const title of [
+    "青衣天后誕",
+    "港式奶茶製作技藝",
+    "青衣真君信俗",
+    "月餅製作技藝",
+    "木雕刻技藝",
+    "潮僑盂蘭勝會",
+    "霓虹光管製作及造型技藝",
+  ]) {
+    assert.match(html, new RegExp(title));
+  }
+  assert.match(html, /重遊旅程/);
+  assert.match(mapSource, /互動體驗將於下一階段加入/);
+  assert.match(mapSource, /官方資料來源/);
+  assert.match(dataSource, /icho\.hk/);
+  assert.match(dataSource, /gohk\.gov\.hk/);
+  assert.doesNotMatch(html, /已完成七個遊戲|遊戲完成 7/);
+});
+
+test("connects the landing shortcut, final exploration route and direct replay entry", async () => {
+  const html = await (await render()).text();
+  const page = await readFile(new URL("../app/VideoHome.tsx", import.meta.url), "utf8");
+  assert.match(html, /旅程捷徑/);
+  assert.match(html, /直接進入地圖/);
+  assert.match(page, /window\.location\.assign\(`\$\{assetPrefix\}\/explore\/`\)/);
+  assert.match(page, /params\.get\("replay"\) !== "1"/);
+  assert.match(page, /launchJourney\(\{ x: window\.innerWidth \* 0\.5/);
 });
 
 test("ships five native-quality short-GOP scroll films with exact posters", async () => {

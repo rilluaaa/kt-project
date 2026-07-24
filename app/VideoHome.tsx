@@ -176,6 +176,7 @@ export default function VideoHome() {
   const [effectVideo, setEffectVideo] = useState<HTMLVideoElement | null>(null);
   const [effectKey, setEffectKey] = useState(0);
   const [inkOrigin, setInkOrigin] = useState({ x: 0, y: 0 });
+  const [openingMenuOpen, setOpeningMenuOpen] = useState(false);
 
   const stageRef = useRef<HTMLDivElement>(null);
   const storyRef = useRef<HTMLElement>(null);
@@ -194,6 +195,7 @@ export default function VideoHome() {
   const loadingBegan = useRef(0);
   const requiredReadyCount = useRef(scenes.length);
   const minimumGateMs = useRef(1750);
+  const autoReplayHandled = useRef(false);
 
   const refreshLoading = useCallback(() => {
     const required = requiredReadyCount.current;
@@ -442,10 +444,9 @@ export default function VideoHome() {
     } catch { /* A later user gesture will retry. */ }
   }, [muted]);
 
-  const startJourney = (event: ReactMouseEvent<HTMLButtonElement>) => {
-    const rect = event.currentTarget.getBoundingClientRect();
-    const origin = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+  const launchJourney = useCallback((origin: { x: number; y: number }) => {
     setInkOrigin(origin);
+    setOpeningMenuOpen(false);
     setOpening(true);
     setBurstKey((value) => value + 1);
     void startAudio();
@@ -454,7 +455,30 @@ export default function VideoHome() {
       setOpening(false);
       window.setTimeout(() => storyRef.current?.scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth" }), 80);
     }, reducedMotion ? 120 : 900);
+  }, [reducedMotion, startAudio]);
+
+  const startJourney = (event: ReactMouseEvent<HTMLButtonElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    launchJourney({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
   };
+
+  useEffect(() => {
+    if (!ready || started || autoReplayHandled.current) return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("replay") !== "1") return;
+    autoReplayHandled.current = true;
+    params.delete("replay");
+    const query = params.toString();
+    window.history.replaceState(
+      null,
+      "",
+      `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`,
+    );
+    const replayFrame = window.requestAnimationFrame(() => {
+      launchJourney({ x: window.innerWidth * 0.5, y: window.innerHeight * 0.52 });
+    });
+    return () => window.cancelAnimationFrame(replayFrame);
+  }, [launchJourney, ready, started]);
 
   const toggleSound = async () => {
     await startAudio();
@@ -551,6 +575,25 @@ export default function VideoHome() {
       <div className={`loader${ready ? " is-ready" : ""}${started ? " is-hidden" : ""}`}>
         <div className="loader-scene" style={{ "--loader-image": `url(${scenes[0].poster})` } as CSSProperties} aria-hidden="true" />
         <div className="loader-colour" aria-hidden="true" />
+        <nav className={`opening-menu${openingMenuOpen ? " is-open" : ""}`} aria-label="旅程捷徑">
+          <button
+            className="opening-menu-trigger"
+            onClick={() => setOpeningMenuOpen((value) => !value)}
+            aria-expanded={openingMenuOpen}
+            aria-controls="opening-menu-panel"
+          >
+            <i aria-hidden="true"><b /><b /></i>
+            <span>選單</span>
+          </button>
+          <div className="opening-menu-panel" id="opening-menu-panel">
+            <small>另一條探索路徑</small>
+            <strong>葵青七藝遊</strong>
+            <p>沿山海地圖尋找七項在地文化記憶。</p>
+            <button onClick={() => window.location.assign(`${assetPrefix}/explore/`)}>
+              直接進入地圖 <span aria-hidden="true">→</span>
+            </button>
+          </div>
+        </nav>
         <Suspense fallback={null}>
           <ThreeInkOpening progress={loading} ready={ready} opening={opening} reducedMotion={reducedMotion} />
         </Suspense>
@@ -712,7 +755,7 @@ export default function VideoHome() {
               <h2 id="explore-title">熱熾葵青，<br />燈火未央。</h2>
               <button
                 className="explore-button"
-                onClick={() => sectionRefs.current[0]?.scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth" })}
+                onClick={() => window.location.assign(`${assetPrefix}/explore/`)}
               >
                 <span>探索葵青</span><b aria-hidden="true">→</b>
               </button>
